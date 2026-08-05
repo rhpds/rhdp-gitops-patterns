@@ -1,0 +1,14 @@
+tenant: ""
+# tenant:
+#   git:
+#     url: https://github.com/org/repo.git
+#     revision: main
+#     path: bootstrap-tenant
+#
+# user:
+#   count: 2
+#   prefix: user
+
+tenantLifecycle:
+  enabled: true
+  namespace: tenant-lifecycle

@@ -1,0 +1,7 @@
+username: user1
+
+namespaces:
+  - app
+
+deployer:
+  domain: apps.cluster.example.com
