@@ -1,0 +1,29 @@
+apiVersion: rhdh.redhat.com/v1alpha4
+kind: Backstage
+metadata:
+  name: developer-hub
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  application:
+    appConfig:
+      mountPath: /opt/app-root/src
+      configMaps:
+        - name: app-config-rhdh
+    dynamicPluginsConfigMapName: dynamic-plugins
+    extraEnvs:
+      envs:
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: "0"
+      secrets:
+        - name: backend-secret
+        - name: oauth-client
+        - name: gitlab-token
+        - name: kubernetes-sa-token
+    replicas: 1
+    route:
+      enabled: true
+  database:
+    enableLocalDb: true

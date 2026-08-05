@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhdh-kubernetes
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhdh-kubernetes-readonly
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+subjects:
+  - kind: ServiceAccount
+    name: rhdh-kubernetes
+    namespace: {{ .Values.devhub.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-reader
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rhdh-kubernetes-token
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    kubernetes.io/service-account.name: rhdh-kubernetes
+    argocd.argoproj.io/sync-wave: "-1"
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rhdh-kubernetes-secrets
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+subjects:
+  - kind: ServiceAccount
+    name: rhdh-kubernetes
+    namespace: {{ .Values.devhub.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit

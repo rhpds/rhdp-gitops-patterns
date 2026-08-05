@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: devhub-cleanup-{{ .Values.username }}
+  namespace: {{ .Values.tenantLifecycleNamespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreDelete
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: ansible
+          image: {{ .Values.jobAnsibleImage }}
+          command:
+            - /bin/sh
+            - -c
+            - ansible-playbook /playbooks/delete-entities.yaml
+          volumeMounts:
+            - name: playbooks
+              mountPath: /playbooks
+      volumes:
+        - name: playbooks
+          configMap:
+            name: cm-devhub-cleanup-{{ .Values.username }}
+      restartPolicy: Never
+  backoffLimit: 3

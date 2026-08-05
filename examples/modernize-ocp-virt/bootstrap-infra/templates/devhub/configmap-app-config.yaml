@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-rhdh
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  app-config-rhdh.yaml: |
+    app:
+      title: Red Hat Developer Hub
+      baseUrl: https://backstage-developer-hub-{{ .Values.devhub.namespace }}.{{ .Values.deployer.domain }}
+
+    signInPage: oidc
+
+    auth:
+      session:
+        secret: ${BACKEND_SECRET}
+      environment: production
+      providers:
+        oidc:
+          production:
+            prompt: login
+            metadataUrl: https://sso.{{ .Values.deployer.domain }}/realms/{{ .Values.devhub.keycloakRealm }}/.well-known/openid-configuration
+            clientId: ${OAUTH_CLIENT_ID}
+            clientSecret: ${OAUTH_CLIENT_SECRET}
+            signIn:
+              resolvers:
+                - resolver: preferredUsernameMatchingUserEntityName
+
+    backend:
+      baseUrl: https://backstage-developer-hub-{{ .Values.devhub.namespace }}.{{ .Values.deployer.domain }}
+      listen:
+        port: 7007
+        host: 0.0.0.0
+      auth:
+        externalAccess:
+          - type: static
+            options:
+              token: ${BACKEND_SECRET}
+              subject: api-access
+      csp:
+        upgrade-insecure-requests: false
+
+    integrations:
+      gitlab:
+        - apiBaseUrl: https://gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}/api/v4
+          baseUrl: https://gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}
+          host: gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}
+          token: ${GITLAB_TOKEN}
+
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - clusters:
+            - name: dev-cluster
+              url: {{ .Values.deployer.apiUrl }}
+              authProvider: serviceAccount
+              skipTLSVerify: true
+              serviceAccountToken: ${KUBERNETES_SA_TOKEN}
+          type: config
+      customResources:
+        - group: tekton.dev
+          apiVersion: v1beta1
+          plural: pipelineruns
+        - group: tekton.dev
+          apiVersion: v1beta1
+          plural: taskruns
+        - group: route.openshift.io
+          apiVersion: v1
+          plural: routes
+
+    catalog:
+      rules:
+        - allow: [Component, System, API, Resource, Location, Template, Domain]
+      locations:
+        - type: url
+          target: https://gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}/rhdh/modernize-ocp-virt/-/blob/main/backstage/catalog-info.yaml
+          rules:
+            - allow: [Location, Template]

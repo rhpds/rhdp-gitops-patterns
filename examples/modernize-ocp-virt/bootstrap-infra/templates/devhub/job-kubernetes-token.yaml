@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-kubernetes-sa-token
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: rhdh-kubernetes
+      containers:
+        - name: create-token
+          image: {{ .Values.jobCliImage }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              TOKEN=$(oc get secret rhdh-kubernetes-token -n {{ .Values.devhub.namespace }} -o jsonpath='{.data.token}' | base64 -d)
+              if [ -z "$TOKEN" ]; then
+                echo "Token not yet populated, retrying..."
+                exit 1
+              fi
+              oc delete secret kubernetes-sa-token -n {{ .Values.devhub.namespace }} --ignore-not-found
+              oc create secret generic kubernetes-sa-token --from-literal=KUBERNETES_SA_TOKEN=$TOKEN -n {{ .Values.devhub.namespace }}
+              echo "kubernetes-sa-token secret created."

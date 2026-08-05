@@ -1,0 +1,98 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cars-vm
+  namespace: {{ .Values.username }}-travel-agency
+  labels:
+    app: cars-vm
+spec:
+  ports:
+    - port: 8000
+      name: http
+  selector:
+    kubevirt.io/domain: cars-vm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discounts-vm
+  namespace: {{ .Values.username }}-travel-agency
+  labels:
+    app: discounts-vm
+spec:
+  ports:
+    - port: 8000
+      name: http
+  selector:
+    kubevirt.io/domain: discounts-vm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flights-vm
+  namespace: {{ .Values.username }}-travel-agency
+  labels:
+    app: flights-vm
+spec:
+  ports:
+    - port: 8000
+      name: http
+  selector:
+    kubevirt.io/domain: flights-vm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotels-vm
+  namespace: {{ .Values.username }}-travel-agency
+  labels:
+    app: hotels-vm
+spec:
+  ports:
+    - port: 8000
+      name: http
+  selector:
+    kubevirt.io/domain: hotels-vm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: insurances-vm
+  namespace: {{ .Values.username }}-travel-agency
+  labels:
+    app: insurances-vm
+spec:
+  ports:
+    - port: 8000
+      name: http
+  selector:
+    kubevirt.io/domain: insurances-vm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysqldb-vm
+  namespace: {{ .Values.username }}-travel-agency
+  labels:
+    app: mysqldb-vm
+spec:
+  ports:
+    - port: 3306
+      name: tcp
+  selector:
+    kubevirt.io/domain: mysqldb-vm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: travels-vm
+  namespace: {{ .Values.username }}-travel-agency
+  labels:
+    app: travels-vm
+spec:
+  ports:
+    - port: 8000
+      name: http
+  selector:
+    kubevirt.io/domain: travels-vm

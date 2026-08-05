@@ -1,0 +1,13 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: rhdh
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  channel: {{ .Values.devhub.channel }}
+  installPlanApproval: Automatic
+  name: rhdh
+  source: {{ .Values.devhub.source }}
+  sourceNamespace: {{ .Values.devhub.sourceNamespace }}

@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travels
+  namespace: {{ .Values.username }}-travel-portal
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  selector:
+    matchLabels:
+      app: travels
+      version: v1
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        readiness.status.sidecar.istio.io/applicationPorts: ""
+      labels:
+        app: travels
+        version: v1
+    spec:
+      containers:
+        - name: control
+          image: quay.io/kiali/demo_travels_portal:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          securityContext:
+            privileged: false
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+          env:
+            - name: LISTEN_ADDRESS
+              value: ':8000'
+            - name: PORTAL_COORDINATES
+              value: '55.956245,-3.187915'
+            - name: PORTAL_COUNTRY
+              value: 'United Kingdom'
+            - name: PORTAL_NAME
+              value: 'travels.uk'
+            - name: TRAVELS_AGENCY_SERVICE
+              value: 'http://travels-vm.{{ .Values.username }}-travel-agency:8000'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: travels
+  namespace: {{ .Values.username }}-travel-portal
+  labels:
+    app: travels
+spec:
+  ports:
+    - name: http
+      port: 8000
+  selector:
+    app: travels

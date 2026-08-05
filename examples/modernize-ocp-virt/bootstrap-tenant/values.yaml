@@ -1,0 +1,21 @@
+# Default values for tenant.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+username: user1
+password: password
+namespaceSuffix: vms
+
+deployer:
+  domain: apps.cluster-guid.sandbox.opentlc.com
+
+jobAnsibleImage: quay.io/agnosticd/ee-multicloud:latest
+
+tenantLifecycleNamespace: tenant-lifecycle
+
+gitlab:
+  namespace: gitlab
+
+devhub:
+  namespace: rhdh
+  backendSecret: demo-backend-secret-key-change-me

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.tenantLifecycleNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.tenantLifecycleNamespace }}
+  namespace: {{ .Values.tenantLifecycleNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.tenantLifecycleNamespace }}-gitlab-token
+  namespace: {{ .Values.gitlab.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.tenantLifecycleNamespace }}
+    namespace: {{ .Values.tenantLifecycleNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gitlab-token-reader
