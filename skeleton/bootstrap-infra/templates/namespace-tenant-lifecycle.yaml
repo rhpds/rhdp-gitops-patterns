@@ -1,4 +1,4 @@
-{{- if .Values.tenantLifecycle.enabled }}
+{{- if .Values.tenantLifecycle }}
 apiVersion: v1
 kind: Namespace
 metadata:
