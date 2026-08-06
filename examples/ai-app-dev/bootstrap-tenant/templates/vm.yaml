@@ -1,0 +1,80 @@
+{{ if .Values.vm -}}
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel-podman
+  namespace: "{{ .Values.username }}-vm"
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+  - metadata:
+      name: rhel-podman-disk
+      annotations:
+        cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+    spec:
+      sourceRef:
+        kind: DataSource
+        name: student-vm
+        namespace: openshift-virtualization-os-images
+      storage:
+        accessModes:
+          - ReadWriteOnce
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: {{ .Values.vm.diskSize }}
+  template:
+    metadata:
+      labels:
+        vm.kubevirt.io/name: rhel-podman
+    spec:
+      tolerations:
+      - key: metal
+        value: reserved
+        effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/worker-metal
+                operator: Exists
+      domain:
+        cpu:
+          cores: {{ .Values.vm.cores }}
+          model: host-passthrough
+        memory:
+          guest: {{ .Values.vm.memory }}
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: rootdisk
+          interfaces:
+          - name: default
+            model: virtio
+            masquerade: {}
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - dataVolume:
+          name: rhel-podman-disk
+        name: rootdisk
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rhel-podman-ssh
+  namespace: "{{ .Values.username }}-vm"
+spec:
+  selector:
+    vm.kubevirt.io/name: rhel-podman
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: 22
+    protocol: TCP
+  type: ClusterIP
+{{- end }}

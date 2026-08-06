@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-registry-config
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: image-registry-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+rules:
+  - apiGroups:
+      - imageregistry.operator.openshift.io
+    resources:
+      - configs
+    verbs:
+      - get
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: image-registry-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+subjects:
+  - kind: ServiceAccount
+    name: image-registry-config
+    namespace: {{ .Values.devhub.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: image-registry-config
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: enable-image-registry-route
+  namespace: {{ .Values.devhub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      serviceAccountName: image-registry-config
+      containers:
+        - name: oc-patch
+          image: {{ .Values.jobCliImage }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              oc patch configs.imageregistry.operator.openshift.io/cluster \
+                --patch '{"spec":{"defaultRoute":true}}' \
+                --type=merge
+      restartPolicy: Never
+  backoffLimit: 3

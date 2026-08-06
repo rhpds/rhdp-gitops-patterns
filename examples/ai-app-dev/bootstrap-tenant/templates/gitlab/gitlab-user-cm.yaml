@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-gitlab-create-user
+  namespace: "{{ .Values.username }}-{{ .Values.namespaceSuffix }}"
+data:
+  create-user.yaml: |
+    ---
+    - name: Create GitLab user
+      hosts: localhost
+      vars:
+        gitlab_namespace: {{ .Values.gitlab.namespace }}
+        gitlab_host: gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}
+        username: {{ .Values.username }}
+        password: {{ .Values.password }}
+      tasks:
+        - name: Retrieve root token
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Secret
+            name: root-user-personal-token
+            namespace: '{{ "{{" }} gitlab_namespace {{ "}}" }}'
+          register: r_root_token
+          failed_when: r_root_token.resources[0].data.token | length == 0
+
+        - name: Decode root token
+          set_fact:
+            root_token: '{{ "{{" }} r_root_token.resources[0].data.token | b64decode {{ "}}" }}'
+
+        - name: Create user
+          ansible.builtin.uri:
+            url: https://{{ "{{" }} gitlab_host {{ "}}" }}/api/v4/users
+            method: POST
+            body_format: form-urlencoded
+            body:
+              admin: false
+              email: '{{ "{{" }} username {{ "}}" }}@rhdemo.com'
+              public_email: '{{ "{{" }} username {{ "}}" }}@rhdemo.com'
+              skip_confirmation: true
+              username: '{{ "{{" }} username {{ "}}" }}'
+              password: '{{ "{{" }} password {{ "}}" }}'
+              name: '{{ "{{" }} username {{ "}}" }}'
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: [201, 409]
+          register: r_user
+          retries: 10
+          delay: 5
+          until: r_user.status in [201, 409]
+
+        - name: Get user id
+          ansible.builtin.uri:
+            url: https://{{ "{{" }} gitlab_host {{ "}}" }}/api/v4/users?username={{ "{{" }} username {{ "}}" }}
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+          register: r_user_info
+
+        - name: Get rhdh group id
+          ansible.builtin.uri:
+            url: https://{{ "{{" }} gitlab_host {{ "}}" }}/api/v4/groups/rhdh
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+          register: r_rhdh_group
+
+        - name: Add user to rhdh group
+          ansible.builtin.uri:
+            url: https://{{ "{{" }} gitlab_host {{ "}}" }}/api/v4/groups/{{ "{{" }} r_rhdh_group.json.id {{ "}}" }}/members
+            method: POST
+            body_format: form-urlencoded
+            body:
+              user_id: '{{ "{{" }} r_user_info.json[0].id {{ "}}" }}'
+              access_level: "30"
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: [201, 409]

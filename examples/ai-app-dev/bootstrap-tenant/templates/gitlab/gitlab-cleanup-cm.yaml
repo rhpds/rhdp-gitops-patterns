@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-gitlab-cleanup-{{ .Values.username }}
+  namespace: {{ .Values.tenantLifecycleNamespace }}
+data:
+  delete-user.yaml: |
+    ---
+    - name: Delete GitLab user
+      hosts: localhost
+      vars:
+        gitlab_namespace: {{ .Values.gitlab.namespace }}
+        gitlab_host: gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}
+        username: {{ .Values.username }}
+      tasks:
+        - name: Retrieve root token
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Secret
+            name: root-user-personal-token
+            namespace: '{{ "{{" }} gitlab_namespace {{ "}}" }}'
+          register: r_root_token
+          failed_when: r_root_token.resources[0].data.token | length == 0
+
+        - name: Decode root token
+          set_fact:
+            root_token: '{{ "{{" }} r_root_token.resources[0].data.token | b64decode {{ "}}" }}'
+
+        - name: Get user id
+          ansible.builtin.uri:
+            url: https://{{ "{{" }} gitlab_host {{ "}}" }}/api/v4/users?username={{ "{{" }} username {{ "}}" }}
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+          register: r_user_info
+
+        - name: Delete user
+          ansible.builtin.uri:
+            url: https://{{ "{{" }} gitlab_host {{ "}}" }}/api/v4/users/{{ "{{" }} r_user_info.json[0].id {{ "}}" }}
+            method: DELETE
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: [204, 404]
+          when: r_user_info.json | length > 0

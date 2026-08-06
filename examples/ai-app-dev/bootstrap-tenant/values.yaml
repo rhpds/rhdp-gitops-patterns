@@ -1,0 +1,48 @@
+# Default values for tenant.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+username: user-guid
+password: password
+namespaceSuffix: demo
+
+deployer:
+  domain: apps.cluster-guid.sandbox.opentlc.com
+
+jobAnsibleImage: quay.io/agnosticd/ee-multicloud:latest
+
+tenantLifecycleNamespace: tenant-lifecycle
+
+gitlab:
+  namespace: gitlab
+
+# LLM / Model as a Service configuration
+# These placeholder values will be replaced with actual MaaS endpoint details
+# when the LLM workload is available. Values are passed from the cluster workload.
+llm:
+  endpoint: "http://placeholder-model-endpoint:8001/v1"
+  modelName: "placeholder-model"
+  apiKey: "placeholder-api-key"
+
+devhub:
+  namespace: rhdh
+  backendSecret: demo-backend-secret-key-change-me
+
+# Set to empty to NOT create Gitea.
+gitea: ""
+# gitea:
+#   image: quay.io/rhpds/gitea
+#   imageTag: "1.25.5"
+#   postgresqlImage: registry.redhat.io/rhel10/postgresql-16
+#   postgresqlImageTag: "10.1"
+#   repositoriesList:
+#     - repo: "https://github.com/rhpds/ai-app-dev-automation"
+#       name: "ai-app-dev"
+#       private: false
+
+# Set to empty to NOT create RHEL VM.
+vm: ""
+# vm:
+#   diskSize: 30Gi
+#   memory: 8G
+#   cores: 4

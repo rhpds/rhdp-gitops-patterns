@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-gitlab-user
+  namespace: "{{ .Values.username }}-{{ .Values.namespaceSuffix }}"
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      serviceAccountName: gitlab-job
+      containers:
+        - name: ansible
+          image: {{ .Values.jobAnsibleImage }}
+          command:
+            - /bin/sh
+            - -c
+            - ansible-playbook /playbooks/create-user.yaml
+          volumeMounts:
+            - name: playbooks
+              mountPath: /playbooks
+      volumes:
+        - name: playbooks
+          configMap:
+            name: cm-gitlab-create-user
+      restartPolicy: Never
+  backoffLimit: 3

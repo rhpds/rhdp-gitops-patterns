@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: ai-app-dev-templates
+  description: Software templates for AI App Dev workshop
+spec:
+  targets:
+    - ./templates/ai-app-dev/template.yaml
