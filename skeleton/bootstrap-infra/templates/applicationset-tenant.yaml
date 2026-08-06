@@ -7,6 +7,10 @@
 #       revision: main
 #       path: bootstrap-tenant
 #
+#   user:
+#     count: 2
+#     prefix: user
+#
 {{- if .Values.tenant -}}
 {{- $userCount := int .Values.user.count -}}
 apiVersion: argoproj.io/v1alpha1

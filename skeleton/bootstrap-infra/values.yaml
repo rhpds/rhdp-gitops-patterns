@@ -4,10 +4,6 @@ deployer:
   apiUrl: https://api.cluster.example.com:6443
   guid: xxxxx
 
-user:
-  count: 2
-  prefix: user
-
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 # tenantLifecycle:
