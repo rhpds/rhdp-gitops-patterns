@@ -7,11 +7,3 @@ user:
 tenantLifecycle: ""
 # tenantLifecycle:
 #   namespace: tenant-lifecycle
-
-# Fan-out tenant deployment via ApplicationSet. Set to "" to disable.
-tenant: ""
-# tenant:
-#   git:
-#     url: https://github.com/org/repo.git
-#     revision: main
-#     path: bootstrap-tenant
