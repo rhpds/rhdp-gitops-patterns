@@ -1,0 +1,6 @@
+# Example generated and validated by gitops-helper test harness
+apiVersion: v2
+name: bootstrap-tenant
+description: Per-user tenant environment for an RHDP lab
+type: application
+version: 0.1.0

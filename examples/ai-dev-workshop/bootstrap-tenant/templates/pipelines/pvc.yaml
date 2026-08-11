@@ -1,0 +1,17 @@
+# Generated from rhdp-gitops-patterns (gitops-patterns.md - PVC section)
+# Uses Immediate binding storage class to avoid WaitForFirstConsumer blocking
+# ArgoCD health checks on the PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pipeline-workspace
+  namespace: {{ .Values.username }}-ai-dev
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pipelineWorkspaceSize }}
