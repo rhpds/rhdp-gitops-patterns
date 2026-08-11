@@ -1,0 +1,38 @@
+# Generated from rhdp-gitops-patterns/skeleton (v0.1.0)
+{{- range .Values.namespaces }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: {{ $.Values.username }}-{{ . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: registry.access.redhat.com/ubi9/nginx-122
+        command:
+        - /usr/libexec/s2i/run
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        volumeMounts:
+        - name: nginx-content
+          mountPath: /opt/app-root/src
+      volumes:
+      - name: nginx-content
+        configMap:
+          name: nginx-content
+---
+{{- end }}
