@@ -1,0 +1,6 @@
+# Example generated and validated by gitops-helper test harness
+apiVersion: v2
+name: bootstrap-infra
+description: Security demo infrastructure - RHACS, Quay, and OpenShift Pipelines
+type: application
+version: 0.1.0
