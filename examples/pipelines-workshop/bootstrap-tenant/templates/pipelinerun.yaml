@@ -1,0 +1,19 @@
+# Generated from rhdp-gitops-patterns/skeleton (v0.1.0)
+{{- range .Values.namespaces }}
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: sample-build-pipeline-run
+  namespace: {{ $.Values.username }}-{{ . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  pipelineRef:
+    name: sample-build-pipeline
+  workspaces:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: pipeline-workspace
+---
+{{- end }}
