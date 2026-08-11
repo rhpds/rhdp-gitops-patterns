@@ -1,0 +1,20 @@
+# Generated from rhdp-gitops-patterns/skeleton (v0.1.0)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: frontend
+  namespace: {{ .Values.username }}-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app: frontend
+spec:
+  to:
+    kind: Service
+    name: frontend
+    weight: 100
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

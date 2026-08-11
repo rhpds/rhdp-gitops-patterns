@@ -1,0 +1,26 @@
+# Generated from rhdp-gitops-patterns/skeleton (v0.1.0)
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: frontend-to-backend
+  namespace: {{ .Values.username }}-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  hosts:
+  - frontend
+  http:
+  - match:
+    - uri:
+        prefix: /api
+    route:
+    - destination:
+        host: backend
+        port:
+          number: 8080
+  - route:
+    - destination:
+        host: frontend
+        port:
+          number: 8080
