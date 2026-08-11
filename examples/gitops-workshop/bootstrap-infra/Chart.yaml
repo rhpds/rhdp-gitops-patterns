@@ -1,0 +1,6 @@
+# Example generated and validated by gitops-helper test harness
+apiVersion: v2
+name: bootstrap-infra
+description: Cluster-scoped shared infrastructure for the GitOps Workshop
+type: application
+version: 0.1.0

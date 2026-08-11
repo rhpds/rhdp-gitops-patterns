@@ -1,0 +1,59 @@
+# Generated from rhdp-gitops-patterns/examples/ai-app-dev (v0.1.0)
+# Per-user ArgoCD instance for the GitOps Workshop
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: {{ .Values.username }}-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  sso:
+    dex:
+      openShiftOAuth: true
+    provider: dex
+  rbac:
+    policy: |
+      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
+      g, {{ .Values.username }}, role:admin
+    scopes: '[name,groups]'
+  server:
+    route:
+      enabled: true
+      tls:
+        insecureEdgeTerminationPolicy: Redirect
+        termination: reencrypt
+  sourceNamespaces:
+    - {{ .Values.username }}-app
+    - {{ .Values.username }}-app-staging
+  resourceInclusions: |
+    - apiGroups:
+      - "*"
+      kinds:
+      - "*"
+      clusters:
+      - "*"
+  resourceExclusions: |
+    - apiGroups:
+      - tekton.dev
+      clusters:
+      - "*"
+      kinds:
+      - TaskRun
+      - PipelineRun
+  controller:
+    resources:
+      limits:
+        memory: {{ .Values.argocd.memoryLimit }}
+      requests:
+        memory: 256Mi
+  repo:
+    resources:
+      limits:
+        memory: {{ .Values.argocd.memoryLimit }}
+      requests:
+        memory: 128Mi
+  ha:
+    enabled: false
