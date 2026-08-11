@@ -1,0 +1,6 @@
+# Example generated and validated by gitops-helper test harness
+apiVersion: v2
+name: bootstrap-infra
+description: Web Terminal operator demo - cluster-scoped shared infrastructure
+type: application
+version: 0.1.0
