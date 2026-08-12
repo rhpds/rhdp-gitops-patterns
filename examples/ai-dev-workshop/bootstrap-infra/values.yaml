@@ -20,18 +20,27 @@ gitea:
       password: openshift
     - username: user3
       password: openshift
+  migrateRepositories: true
+  migrateRepos:
+    - name: openshift-starter-guides
+      url: https://github.com/redhat-scholars/openshift-starter-guides
+      private: false
 
 pipelines:
   channel: pipelines-1.17
   source: redhat-operators
   sourceNamespace: openshift-marketplace
 
+rhoai:
+  channel: stable-3.3
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+
 aiModels:
   namespace: ai-models
-  modelName: llama-scout-17b
-  modelEndpoint: "https://models.example.com/v1"
-  embeddingModel: nomic-embed-text-v1-5
-  apiKey: placeholder-key
+  modelName: qwen-05b
+  ociImage: "oci://quay.io/redhat-ai-services/modelcar-catalog:qwen2.5-0.5b-instruct"
+  runtimeImage: "quay.io/rh-aiservices-bu/vllm-cpu-openai-ubi9:0.3"
 
 aiInfra:
   namespace: ai-infra

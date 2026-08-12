@@ -22,34 +22,18 @@ spec:
         - name: ai-chatbot
           image: {{ .Values.aiChatbot.image }}
           command:
-            - /bin/sh
-            - -c
-            - |
-              python3 -m http.server {{ .Values.aiChatbot.port }}
+            - python3
+            - -m
+            - http.server
+            - "{{ .Values.aiChatbot.port }}"
           ports:
             - containerPort: {{ .Values.aiChatbot.port }}
               protocol: TCP
           env:
             - name: MODEL_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: model-config
-                  key: model_name
+              value: {{ .Values.aiModels.modelName | quote }}
             - name: MODEL_ENDPOINT
-              valueFrom:
-                configMapKeyRef:
-                  name: model-config
-                  key: model_endpoint
-            - name: EMBEDDING_MODEL
-              valueFrom:
-                configMapKeyRef:
-                  name: model-config
-                  key: embedding_model
-            - name: API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ai-api-key
-                  key: token
+              value: "http://{{ .Values.aiModels.modelName }}-predictor.{{ .Values.aiModels.namespace }}.svc.cluster.local"
           resources:
             requests:
               cpu: 100m

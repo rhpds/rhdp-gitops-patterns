@@ -4,6 +4,6 @@ kind: Namespace
 metadata:
   name: {{ $.Values.username }}-{{ . }}
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "-1"
 ---
 {{- end }}

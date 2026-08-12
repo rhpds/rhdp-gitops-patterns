@@ -28,18 +28,6 @@ devhub:
   namespace: rhdh
   backendSecret: demo-backend-secret-key-change-me
 
-# Set to empty to NOT create Gitea.
-gitea: ""
-# gitea:
-#   image: quay.io/rhpds/gitea
-#   imageTag: "1.25.5"
-#   postgresqlImage: registry.redhat.io/rhel10/postgresql-16
-#   postgresqlImageTag: "10.1"
-#   repositoriesList:
-#     - repo: "https://github.com/rhpds/ai-app-dev-automation"
-#       name: "ai-app-dev"
-#       private: false
-
 # Set to empty to NOT create RHEL VM.
 vm: ""
 # vm:
