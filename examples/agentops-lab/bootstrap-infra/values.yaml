@@ -1,0 +1,84 @@
+# Auto-injected by the deployer. Do not pass these manually.
+deployer:
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
+
+# Shared namespace for tenant cleanup jobs. Set to "" to disable.
+tenantLifecycle: ""
+# tenantLifecycle:
+#   namespace: tenant-lifecycle
+
+# Pinned redhat-operators snapshot, frozen at generation time for OCP 4.21.
+# Regenerate with scripts/verify_operator_channel.py for a different OCP version.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.21_2026_08_17
+
+# RHOAI operator. Requires channel >=stable-3.4: mlflowoperator and
+# aipipelines DataScienceCluster components (used below) don't exist in 3.3,
+# which only has datasciencepipelines and no native MLflow CRD.
+rhoai:
+  channel: stable-3.4
+  source: rhpds-redhat-operators
+  sourceNamespace: openshift-marketplace
+
+# Shared model-serving endpoint (KServe), reachable by every tenant
+# notebook/agent at http://<modelName>-predictor.<namespace>.svc.cluster.local.
+aiModels:
+  namespace: ai-models
+  modelName: qwen-05b
+  ociImage: "oci://quay.io/redhat-ai-services/modelcar-catalog:qwen2.5-0.5b-instruct"
+  runtimeImage: "quay.io/rh-aiservices-bu/vllm-cpu-openai-ubi9:0.3"
+
+# Required for Grafana's thanos-querier datasource to return any data — user
+# workload monitoring is off by default on OpenShift. Storage/retention are
+# lab-sized, not production (production commonly uses ~40Gi/168h).
+clusterMonitoringConfig:
+  enableUserWorkload: true
+  prometheusK8s:
+    retention: 24h
+    volumeClaimTemplate:
+      spec:
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 10Gi
+userWorkloadMonitoringConfig:
+  prometheus:
+    retention: 24h
+    volumeClaimTemplate:
+      spec:
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 10Gi
+
+# Grafana Operator ships from community-operators, not redhat-operators —
+# verify_operator_channel.py doesn't cover it; channel "v5" is unverified,
+# confirm against the cluster's PackageManifest. Auth is OpenShift login via
+# oauth-proxy (see grafana-instance.yaml), not admin/password.
+grafana:
+  namespace: grafana
+  channel: v5
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  # Must be non-empty. Empty falls back to randAlphaNum in
+  # secret-oauth-session-secret.yaml, which re-renders to a different value
+  # on every ArgoCD Helm render and permanently marks that Secret OutOfSync.
+  # General rule: never use an unseeded random default in a Helm template
+  # meant for GitOps — override via helm_values for a real per-deployment value.
+  sessionSecret: "changeme-oauth-proxy-session-secret"
+
+# MLflow (mlflow.opendatahub.io/v1 `kind: MLflow`) is CLUSTER-SCOPED — only
+# one "mlflow" object can exist per cluster, so this must live in infra as
+# one shared instance, never per-tenant (a per-tenant CR would just collide).
+# SQLite backend serializes writes: fine at lab scale, a bottleneck if every
+# tenant writes heavily at once.
+mlflow:
+  storage:
+    size: 5Gi
+  backend:
+    storeUri: "sqlite:////mlflow/mlflow.db"
+  artifacts:
+    destination: "file:///mlflow/artifacts"
+    serve: true

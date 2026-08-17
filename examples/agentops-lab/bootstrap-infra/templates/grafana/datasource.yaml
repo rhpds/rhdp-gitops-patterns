@@ -1,0 +1,33 @@
+# Reads the token from grafana-auth-secret (secret.yaml's PostSync Job,
+# wave 2) — must sync after it.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: user-workload-monitoring
+  namespace: {{ .Values.grafana.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  valuesFrom:
+    - targetPath: secureJsonData.httpHeaderValue1
+      valueFrom:
+        secretKeyRef:
+          name: grafana-auth-secret
+          key: token
+  instanceSelector:
+    matchLabels:
+      app.kubernetes.io/instance: grafana
+  datasource:
+    access: proxy
+    database: prometheus
+    isDefault: true
+    jsonData:
+      httpHeaderName1: Authorization
+      timeInterval: 5s
+      tlsSkipVerify: true
+    secureJsonData:
+      httpHeaderValue1: Bearer ${token}
+    name: Prometheus
+    type: prometheus
+    url: https://thanos-querier.openshift-monitoring.svc:9091

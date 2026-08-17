@@ -1,0 +1,24 @@
+# CLUSTER-SCOPED CRD: a `namespace:` field here is silently ignored, only
+# one "mlflow" object can exist per cluster, and its Service always lands in
+# redhat-ods-applications regardless of what's set here. Belongs in infra as
+# one shared instance — do not template this per-tenant, it will just
+# collide. Isolate students via MLflow experiment/run naming instead.
+# Requires mlflowoperator: Managed (rhoai/datasciencecluster.yaml). Live
+# address: https://mlflow.redhat-ods-applications.svc:8443.
+apiVersion: mlflow.opendatahub.io/v1
+kind: MLflow
+metadata:
+  name: mlflow
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ .Values.mlflow.storage.size }}
+  backendStoreUri: {{ .Values.mlflow.backend.storeUri | quote }}
+  artifactsDestination: {{ .Values.mlflow.artifacts.destination | quote }}
+  serveArtifacts: {{ .Values.mlflow.artifacts.serve }}

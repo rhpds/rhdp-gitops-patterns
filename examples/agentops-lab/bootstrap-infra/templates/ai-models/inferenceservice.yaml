@@ -1,0 +1,22 @@
+# deploymentMode "Standard", not "RawDeployment": KServe's webhook accepts
+# "RawDeployment" but rewrites the stored annotation to "Standard" (its
+# current name for the same mode, RHOAI 3.x). Setting "RawDeployment" still
+# works but permanently drifts from git since the live value never matches.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: {{ .Values.aiModels.modelName }}
+  namespace: {{ .Values.aiModels.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    serving.kserve.io/deploymentMode: Standard
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-cpu-runtime
+      storageUri: {{ .Values.aiModels.ociImage }}

@@ -1,0 +1,11 @@
+# Mounted by the oauth-proxy sidecar in grafana-instance.yaml to validate
+# OpenShift's internal CAs.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ocp-injected-certs
+  namespace: {{ .Values.grafana.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    config.openshift.io/inject-trusted-cabundle: "true"

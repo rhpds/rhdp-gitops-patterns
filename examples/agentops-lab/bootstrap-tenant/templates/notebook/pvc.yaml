@@ -1,0 +1,18 @@
+# Same sync-wave as notebook.yaml (the consumer), not earlier: with a
+# WaitForFirstConsumer storage class, a PVC one wave ahead of its consumer
+# deadlocks ArgoCD — the PVC never binds (no pod scheduled yet) but ArgoCD
+# won't advance to the next wave until this one is Healthy. See
+# gitops-patterns.md "PVC with WaitForFirstConsumer StorageClass".
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: workbench-data
+  namespace: {{ .Values.username }}-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.workbench.storageSize }}

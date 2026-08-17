@@ -1,0 +1,26 @@
+# One Secret per bucket, shaped as an RHOAI dashboard "Data Connection"
+# (opendatahub.io/connection-type + dashboard labels) so it shows up in the
+# tenant's Data Science Project. DSPA's
+# objectStorage.externalStorage.s3CredentialsSecret references "pipeline" by name.
+{{- range $bucket := .Values.minio.buckets }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $bucket.name }}
+  namespace: {{ $.Values.username }}-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    opendatahub.io/connection-type: s3
+    openshift.io/display-name: {{ $bucket.name }}
+  labels:
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/managed: "true"
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: {{ $.Values.username }}
+  AWS_SECRET_ACCESS_KEY: {{ $.Values.minio.password }}
+  AWS_DEFAULT_REGION: wonderland
+  AWS_S3_ENDPOINT: http://minio-service.{{ $.Values.username }}-ai.svc.cluster.local:9000
+  AWS_S3_BUCKET: {{ $bucket.name }}
+{{- end }}

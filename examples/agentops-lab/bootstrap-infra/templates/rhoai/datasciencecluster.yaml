@@ -1,0 +1,45 @@
+# apiVersion v2: aipipelines replaces the older datasciencepipelines
+# component name; mlflowoperator backs the shared `kind: MLflow` CR in
+# mlflow/mlflow-instance.yaml (cluster-scoped, so lives in infra not per-tenant).
+#
+# kserve: no `serving:` sub-object or `defaultDeploymentMode` field in v2 —
+# check the live CRD schema before assuming this API matches older RHOAI
+# docs/examples (`oc get crd datascienceclusters.datasciencecluster.opendatahub.io
+# -o json | jq '.spec.versions[] | select(.name=="v2") | .schema...components.properties.kserve'`).
+# ModelMesh/Serverless are deprecated in RHOAI 3.x; RawDeployment (shown as
+# "Standard" in the UI and in webhook-normalized annotations) is the only
+# mode left, so there's nothing to select. Setting the old fields doesn't
+# error, the API server just silently prunes them on every apply — a classic
+# cause of permanent, unexplained OutOfSync on operator-managed CRs. When you
+# hit that, diff the live object's spec against git before assuming a bug.
+apiVersion: datasciencecluster.opendatahub.io/v2
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  components:
+    codeflare:
+      managementState: Removed
+    dashboard:
+      managementState: Managed
+    aipipelines:
+      managementState: Managed
+    kserve:
+      managementState: Managed
+    kueue:
+      managementState: Removed
+    mlflowoperator:
+      managementState: Managed
+    modelregistry:
+      managementState: Removed
+    ray:
+      managementState: Removed
+    trainingoperator:
+      managementState: Removed
+    trustyai:
+      managementState: Removed
+    workbenches:
+      managementState: Managed

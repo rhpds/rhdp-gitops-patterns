@@ -1,0 +1,17 @@
+# community-operators, not redhat-operators, so not covered by
+# verify_operator_channel.py. Installs into openshift-operators (AllNamespaces
+# mode, cluster's existing global OperatorGroup — same shape as the Gitea
+# quirk in gitops-patterns.md) — no dedicated OperatorGroup here.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: grafana-operator
+  namespace: openshift-operators
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  channel: {{ .Values.grafana.channel }}
+  installPlanApproval: Automatic
+  name: grafana-operator
+  source: {{ .Values.grafana.source }}
+  sourceNamespace: {{ .Values.grafana.sourceNamespace }}

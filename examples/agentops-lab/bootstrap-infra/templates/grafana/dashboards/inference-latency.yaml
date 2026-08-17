@@ -1,0 +1,41 @@
+# PromQL uses vLLM's real /metrics names (vllm:*) — do not invent metric
+# names for a known runtime, check its actual exporter output first.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: llm-inference-latency
+  namespace: {{ .Values.grafana.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  instanceSelector:
+    matchLabels:
+      app.kubernetes.io/instance: grafana
+  json: |
+    {
+      "title": "LLM Inference Latency",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Time to first token (p50/p95)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            { "expr": "histogram_quantile(0.50, sum(rate(vllm:time_to_first_token_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+            { "expr": "histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "End-to-end request latency (p50/p95)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            { "expr": "histogram_quantile(0.50, sum(rate(vllm:e2e_request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+            { "expr": "histogram_quantile(0.95, sum(rate(vllm:e2e_request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" }
+          ]
+        }
+      ]
+    }

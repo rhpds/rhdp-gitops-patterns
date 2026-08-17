@@ -1,0 +1,24 @@
+# Required even with user workload monitoring enabled: UWM makes Prometheus
+# able to scrape workload metrics, it doesn't scrape anything without a
+# ServiceMonitor pointing at it. Without this, the LLM dashboards have no data.
+# UNVERIFIED: the predictor Service's port name ("http") and the
+# "serving.kserve.io/inferenceservice" selector label are assumed from
+# typical KServe behavior, not confirmed live. If dashboards stay empty,
+# run `oc get svc {{ .Values.aiModels.modelName }}-predictor -n {{ .Values.aiModels.namespace }} -o yaml`
+# and check `endpoints[].port` matches first.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Values.aiModels.modelName }}-metrics
+  namespace: {{ .Values.aiModels.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+  selector:
+    matchLabels:
+      serving.kserve.io/inferenceservice: {{ .Values.aiModels.modelName }}

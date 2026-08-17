@@ -1,0 +1,48 @@
+# RHOAI's notebook-controller mutating webhook injects the oauth-proxy
+# sidecar/route/annotations automatically, so this stays minimal.
+# UNRESOLVED: MLFLOW_TRACKING_URI below does NOT persist on a live cluster —
+# missing from both the saved Notebook spec and the running pod after
+# apply. RHOAI's connection-notebook.opendatahub.io admission webhook
+# manages Notebook env vars and silently drops this one (MODEL_NAME/
+# MODEL_ENDPOINT, arbitrary names, pass through fine, so it isn't a blanket
+# strip). Likely needs an opendatahub.io/connection-type Secret referenced
+# via a Notebook annotation, same pattern as minio/connections.yaml, instead
+# of a raw env var — not yet verified. Don't trust this value without
+# re-checking `oc get notebook -o yaml` after apply.
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: workbench
+  namespace: {{ .Values.username }}-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  template:
+    spec:
+      containers:
+        - name: workbench
+          image: {{ .Values.workbench.image }}
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: https://mlflow.redhat-ods-applications.svc:8443
+            - name: MODEL_NAME
+              value: {{ .Values.aiModels.modelName | quote }}
+            - name: MODEL_ENDPOINT
+              value: "http://{{ .Values.aiModels.modelName }}-predictor.{{ .Values.aiModels.namespace }}.svc.cluster.local"
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: workbench-data
+              mountPath: /opt/app-root/src
+      volumes:
+        - name: workbench-data
+          persistentVolumeClaim:
+            claimName: workbench-data

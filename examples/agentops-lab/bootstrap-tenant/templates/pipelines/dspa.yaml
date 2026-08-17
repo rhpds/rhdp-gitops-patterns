@@ -1,0 +1,55 @@
+# apiVersion group is "datasciencepipelinesapplications" (plural) — easy to
+# confuse with "datasciencepipelines", the unrelated DataScienceCluster
+# component name. Object storage is the per-tenant MinIO in minio/minio.yaml
+# (external), not DSPA's embedded-MinIO option. Requires aipipelines:
+# Managed in bootstrap-infra's DataScienceCluster. Wave 4, after
+# create-buckets (wave 3): the "pipeline" bucket must exist before DSPA's
+# object-storage health check runs.
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa
+  namespace: {{ .Values.username }}-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  dspVersion: v2
+  apiServer:
+    caBundleFileMountPath: ''
+    caBundleFileName: ''
+    deploy: true
+    artifactSignedURLExpirySeconds: 60
+    enableSamplePipeline: false
+    managedPipelines: {}
+    enableOauth: true
+    cacheEnabled: true
+    pipelineStore: kubernetes
+  database:
+    disableHealthCheck: false
+    mariaDB:
+      deploy: true
+      pipelineDBName: mlpipeline
+      pvcSize: 10Gi
+      username: mlpipeline
+  objectStorage:
+    disableHealthCheck: false
+    enableExternalRoute: false
+    externalStorage:
+      basePath: ''
+      bucket: pipeline
+      host: 'minio-service.{{ .Values.username }}-ai.svc.cluster.local:9000'
+      port: ''
+      region: wonderland
+      s3CredentialsSecret:
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY
+        secretName: pipeline
+      scheme: http
+  persistenceAgent:
+    deploy: true
+    numWorkers: 2
+  podToPodTLS: true
+  scheduledWorkflow:
+    cronScheduleTimezone: UTC
+    deploy: true

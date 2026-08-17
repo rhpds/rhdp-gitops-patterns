@@ -1,0 +1,50 @@
+# PLACEHOLDER metric names — unlike vLLM, "agent performance" has no standard
+# exporter. Assumes agent_task_duration_seconds, agent_task_total{status=...},
+# agent_tool_calls_total{tool=...}; rename to match actual instrumentation
+# before reusing, don't assume these names exist elsewhere.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: agent-performance
+  namespace: {{ .Values.grafana.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  instanceSelector:
+    matchLabels:
+      app.kubernetes.io/instance: grafana
+  json: |
+    {
+      "title": "Agent Performance",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Task success rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            { "expr": "sum(rate(agent_task_total{status=\"success\"}[5m])) / sum(rate(agent_task_total[5m]))", "refId": "A" }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Task duration (p95)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            { "expr": "histogram_quantile(0.95, sum(rate(agent_task_duration_seconds_bucket[5m])) by (le))", "refId": "A" }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Tool calls / sec by tool",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+          "targets": [
+            { "expr": "sum(rate(agent_tool_calls_total[5m])) by (tool)", "refId": "A" }
+          ]
+        }
+      ]
+    }
