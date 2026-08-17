@@ -1,15 +1,20 @@
 # Required even with user workload monitoring enabled: UWM makes Prometheus
 # able to scrape workload metrics, it doesn't scrape anything without a
 # ServiceMonitor pointing at it. Without this, the LLM dashboards have no data.
-# UNVERIFIED: the predictor Service's port name ("http") and the
-# "serving.kserve.io/inferenceservice" selector label are assumed from
-# typical KServe behavior, not confirmed live. If dashboards stay empty,
-# run `oc get svc {{ .Values.aiModels.modelName }}-predictor -n {{ .Values.aiModels.namespace }} -o yaml`
-# and check `endpoints[].port` matches first.
+#
+# CONFIRMED LIVE (RHOAI 3.4.3 / OCP 4.21): the predictor Service's port name
+# really is "http" and "serving.kserve.io/inferenceservice" is the right
+# selector label — but naming this object "<modelName>-metrics" collides
+# with a name KServe's own monitoring reconciler treats as reserved: it
+# silently overwrites our spec in place (no ownerReference is set, so this
+# isn't visible as a normal controller relationship) with
+# `port: <runtimeName>-metrics` / `selector.matchLabels.name: <modelName>-metrics`,
+# which matches no live Service or Pod and produces zero scraped metrics.
+# Naming it something KServe doesn't recognize avoids the stomp entirely.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ .Values.aiModels.modelName }}-metrics
+  name: {{ .Values.aiModels.modelName }}-llm-observability
   namespace: {{ .Values.aiModels.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "3"
