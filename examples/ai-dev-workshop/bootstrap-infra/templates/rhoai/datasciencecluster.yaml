@@ -1,4 +1,11 @@
-apiVersion: datasciencecluster.opendatahub.io/v1
+# apiVersion v2 is the storage version even on stable-3.3 (v1 is served but
+# converted to v2 on write, silently dropping fields v2 doesn't have). kserve
+# in v2 has no `serving:` sub-object or `defaultDeploymentMode` — RawDeployment
+# is the only supported mode. modelmeshserving/codeflare/datasciencepipelines
+# don't exist in v2 either (datasciencepipelines was renamed to aipipelines).
+# Confirmed against the live CRD schema before assuming this matches older
+# RHOAI docs/examples.
+apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
   name: default-dsc
@@ -7,25 +14,12 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-    codeflare:
-      managementState: Removed
     dashboard:
       managementState: Managed
-    datasciencepipelines:
-      managementState: Removed
     kserve:
       managementState: Managed
-      serving:
-        ingressGateway:
-          certificate:
-            type: SelfSigned
-        managementState: Removed
-        name: knative-serving
-      defaultDeploymentMode: RawDeployment
     kueue:
       managementState: Removed
-    modelmeshserving:
-      managementState: Managed
     modelregistry:
       managementState: Removed
     ray:

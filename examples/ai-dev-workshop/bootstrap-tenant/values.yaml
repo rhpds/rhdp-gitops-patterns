@@ -9,6 +9,7 @@ username: user1
 namespaces:
   - ai-dev
   - ai-staging
+  - gitea
 
 # Shared AI models namespace (read-only access granted)
 aiModels:
@@ -23,3 +24,14 @@ aiChatbot:
 
 # Pipeline workspace
 pipelineWorkspaceSize: 2Gi
+
+# Per-tenant Gitea instance: one admin user + one user matching .Values.username,
+# with the sample repo(s) migrated into that user's account.
+gitea:
+  dataSize: 5Gi
+  adminPassword: openshift
+  password: openshift
+  migrateRepos:
+    - name: openshift-starter-guides
+      url: https://github.com/redhat-scholars/openshift-starter-guides
+      private: false

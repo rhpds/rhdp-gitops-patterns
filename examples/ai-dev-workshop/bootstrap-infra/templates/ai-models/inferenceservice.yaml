@@ -1,3 +1,9 @@
+# deploymentMode "RawDeployment": confirmed live on RHOAI 3.3.4 (this chart's
+# pinned stable-3.3 channel) that the value is stored verbatim, unlike RHOAI
+# 3.4.x where KServe's webhook rewrites it to "Standard". If this chart's
+# rhoai.channel is ever bumped to stable-3.4+, switch this to "Standard" or
+# it will drift permanently (the field is also immutable post-creation, so an
+# in-place channel upgrade would need the InferenceService recreated).
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:

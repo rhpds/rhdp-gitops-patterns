@@ -7,24 +7,11 @@ deployer:
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 
+# Only installs the gitea-operator cluster-wide. The actual Gitea instance is
+# deployed per tenant (see bootstrap-tenant/templates/gitea) since the number
+# of tenants is not known ahead of time to the infra chart.
 gitea:
-  namespace: gitea
   catalogImage: quay.io/rhpds/gitea-catalog:latest
-  adminUser: gitea-admin
-  adminPassword: openshift
-  dataSize: 10Gi
-  users:
-    - username: user1
-      password: openshift
-    - username: user2
-      password: openshift
-    - username: user3
-      password: openshift
-  migrateRepositories: true
-  migrateRepos:
-    - name: openshift-starter-guides
-      url: https://github.com/redhat-scholars/openshift-starter-guides
-      private: false
 
 pipelines:
   channel: pipelines-1.17
