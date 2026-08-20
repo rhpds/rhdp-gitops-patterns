@@ -1,0 +1,14 @@
+# Pinned redhat-operators snapshot. Shared by every redhat-operators Subscription in
+# this chart — one CatalogSource per lab, not per operator.
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: rhpds-redhat-operators
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  sourceType: grpc
+  image: {{ .Values.redhatOperatorsCatalog.image }}
+  displayName: RHPDS Pinned Snapshot (redhat-operators)
+  publisher: Red Hat GPTE

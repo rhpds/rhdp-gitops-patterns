@@ -1,0 +1,13 @@
+# Clone URLs into the in-cluster Gitea mirror (bootstrap-infra/templates/gitea) of the
+# upstream repos, so learners can clone in-cluster instead of live GitHub. Host and
+# owner path verified against a live deploy — see the gitea values.yaml comment.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quickstart-sources
+  namespace: {{ .Values.username }}-sandbox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  secure-agent-workspace: https://{{ .Values.gitea.instanceName }}-{{ .Values.gitea.namespace }}.{{ .Values.deployer.domain }}/{{ .Values.gitea.repoOwner }}/secure-agent-workspace.git
+  private-coding-assistant: https://{{ .Values.gitea.instanceName }}-{{ .Values.gitea.namespace }}.{{ .Values.deployer.domain }}/{{ .Values.gitea.repoOwner }}/private-coding-assistant.git

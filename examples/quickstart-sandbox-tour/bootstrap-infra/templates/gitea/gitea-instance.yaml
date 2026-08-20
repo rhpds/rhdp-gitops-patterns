@@ -1,0 +1,47 @@
+# Shared, read-only mirror of upstream repos — no real per-student Gitea accounts
+# needed, but see the GOTCHAs below for why one throwaway account still gets created.
+#
+# GOTCHA 1: the gitea-operator's repo-migration task is gated on
+# status.userSetupComplete, which is only ever set by the giteaCreateUsers flow (see
+# roles/gitea-ocp/tasks/main.yml in quay.io/rhpds/gitea-operator — "Migrate
+# repositories only if users and admin user have been created"). giteaCreateUsers:
+# false means giteaMigrateRepositories: true silently never runs anything — no error,
+# it just stays empty. A throwaway user is required even when nobody logs in as them.
+#
+# GOTCHA 2: with giteaUserNumber: 1, create_user.yml uses giteaGenerateUserFormat
+# LITERALLY as the username — `.format(item)` substitution only happens when
+# giteaUserNumber > 1. A "%d"-style template here (e.g. "mirror-user%d") produces a
+# literal username containing "%d" and every Gitea API call 400s. Set the final,
+# already-substituted username directly for the single-user case.
+#
+# GOTCHA 3: repos are migrated into the created *user's* namespace, not the admin's —
+# clone URLs are https://<route>/<giteaGenerateUserFormat value>/<repo name>.git.
+apiVersion: pfe.rhpds.com/v1
+kind: Gitea
+metadata:
+  name: gitea-instance
+  namespace: {{ .Values.gitea.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  giteaSsl: true
+  giteaAdminUser: {{ .Values.gitea.adminUser }}
+  giteaAdminPassword: {{ .Values.gitea.adminPassword }}
+  giteaAdminEmail: gitea-admin@example.com
+  giteaDisableRegistration: true
+  postgresqlVolumeSize: {{ .Values.gitea.dataSize }}
+  giteaVolumeSize: {{ .Values.gitea.dataSize }}
+  giteaCreateUsers: true
+  giteaUserNumber: 1
+  giteaUserPassword: {{ .Values.gitea.adminPassword }}
+  giteaGenerateUserFormat: "mirror-user1"
+  giteaMigrateRepositories: true
+  {{- if .Values.gitea.migrateRepos }}
+  giteaRepositoriesList:
+    {{- range .Values.gitea.migrateRepos }}
+    - repo: {{ .url }}
+      name: {{ .name }}
+      private: {{ .private }}
+    {{- end }}
+  {{- end }}

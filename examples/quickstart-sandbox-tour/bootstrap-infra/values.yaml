@@ -1,0 +1,39 @@
+# Auto-injected by the deployer. Do not pass these manually.
+deployer:
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
+
+# Shared namespace for tenant cleanup jobs. Set to "" to disable.
+tenantLifecycle: ""
+# tenantLifecycle:
+#   namespace: tenant-lifecycle
+
+# Pinned redhat-operators snapshot — shared by every redhat-operators Subscription in
+# this chart. Re-verify and re-pin per target OCP version at generation time (see
+# "Verifying and Pinning Operator Channels" in gitops-patterns.md).
+redhatOperatorsCatalog:
+  image: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
+rhoai:
+  namespace: redhat-ods-operator
+  channel: stable-3.x
+  source: rhpds-redhat-operators
+  sourceNamespace: openshift-marketplace
+
+# Shared, read-only Gitea mirror of upstream lab/QuickStart repos — so a fully or
+# partially air-gapped tenant module can deploy from an in-cluster source instead of
+# live GitHub access.
+gitea:
+  namespace: gitea
+  catalogImage: quay.io/rhpds/gitea-catalog:latest
+  adminUser: gitea-admin
+  adminPassword: openshift
+  dataSize: 5Gi
+  migrateRepos:
+    - name: secure-agent-workspace
+      url: https://github.com/validatedpatterns-sandbox/secure-agent-workspace
+      private: false
+    - name: private-coding-assistant
+      url: https://github.com/rh-ai-quickstart/private-coding-assistant
+      private: false

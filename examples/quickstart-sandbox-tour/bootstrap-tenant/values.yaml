@@ -1,0 +1,28 @@
+# Auto-injected by the deployer. Do not pass these manually.
+deployer:
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
+
+username: user1
+
+namespaces:
+  - sandbox
+
+# Shared Gitea mirror location (bootstrap-infra). Not deployer-managed — must match
+# bootstrap-infra's values.yaml gitea.* (namespace, CR name, and the throwaway mirror
+# user the repos are migrated under — see GOTCHA 3 in
+# bootstrap-infra/templates/gitea/gitea-instance.yaml). The Route host is
+# "<gitea CR name>-<namespace>.<domain>", not "gitea-<namespace>.<domain>" — no
+# upstream doc states this, verified against a live deploy.
+gitea:
+  namespace: gitea
+  instanceName: gitea-instance
+  repoOwner: mirror-user1
+
+# External model-serving API accessed at runtime by a tenant module (e.g. an
+# air-gapped-except-for-this-one-thing AI coding assistant). apiKey is a placeholder:
+# the deployer must inject the real value as an Ansible Vault-encrypted helm value.
+maas:
+  endpoint: "https://maas.example.com"
+  apiKey: "REPLACE_ME"
