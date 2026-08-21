@@ -1,0 +1,304 @@
+{{- if .Values.demoApp.enabled }}
+---
+# OpenShift GitOps ships a default resourceExclusions list that excludes
+# tekton.dev TaskRun AND PipelineRun cluster-wide — a sensible default to avoid
+# flooding ArgoCD's watch cache with high-churn execution records. But this
+# chart's whole "the platform's demo image is built/scanned/signed by one real
+# declarative PipelineRun at bootstrap" story needs ArgoCD to actually apply
+# and track that one PipelineRun. spec.resourceExclusions is a plain list
+# (not mergeable per-item), so this patch reproduces the operator's default
+# list verbatim and drops only tekton.dev/PipelineRun from it — TaskRun stays
+# excluded, nothing else changes. Confirmed live: this is the OpenShift GitOps
+# operator's own default (openshift-gitops ArgoCD CR / argocd-cm), not
+# anything set by this chart.
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: {{ .Values.argocdInstance.name | default "openshift-gitops" }}
+  namespace: {{ .Values.argocdInstance.namespace | default "openshift-gitops" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  resourceExclusions: |
+    - apiGroups:
+        - ""
+        - discovery.k8s.io
+      clusters:
+        - '*'
+      kinds:
+        - Endpoints
+        - EndpointSlice
+    - apiGroups:
+        - apiregistration.k8s.io
+      clusters:
+        - '*'
+      kinds:
+        - APIService
+    - apiGroups:
+        - coordination.k8s.io
+      clusters:
+        - '*'
+      kinds:
+        - Lease
+    - apiGroups:
+        - authentication.k8s.io
+        - authorization.k8s.io
+      clusters:
+        - '*'
+      kinds:
+        - SelfSubjectReview
+        - TokenReview
+        - LocalSubjectAccessReview
+        - SelfSubjectAccessReview
+        - SelfSubjectRulesReview
+        - SubjectAccessReview
+    - apiGroups:
+        - certificates.k8s.io
+      clusters:
+        - '*'
+      kinds:
+        - CertificateSigningRequest
+    - apiGroups:
+        - cert-manager.io
+      clusters:
+        - '*'
+      kinds:
+        - CertificateRequest
+    - apiGroups:
+        - cilium.io
+      clusters:
+        - '*'
+      kinds:
+        - CiliumIdentity
+        - CiliumEndpoint
+        - CiliumEndpointSlice
+    - apiGroups:
+        - kyverno.io
+        - reports.kyverno.io
+        - wgpolicyk8s.io
+      clusters:
+        - '*'
+      kinds:
+        - PolicyReport
+        - ClusterPolicyReport
+        - EphemeralReport
+        - ClusterEphemeralReport
+        - AdmissionReport
+        - ClusterAdmissionReport
+        - BackgroundScanReport
+        - ClusterBackgroundScanReport
+        - UpdateRequest
+    - apiGroups:
+        - tekton.dev
+      clusters:
+        - '*'
+      kinds:
+        - TaskRun
+  # None of the following vendor operator CRDs (RHACS, RHDH, RHTAS, RHTPA,
+  # the Gitea operator) are in ArgoCD's built-in health-check table, so
+  # without these customizations ArgoCD reports health "" (unknown/no-op)
+  # for them forever — the Application can reach top-level Healthy even
+  # while, say, RHDH's Backstage pod is still crash-looping, because an
+  # unassessed resource never counts against aggregate health. Each check
+  # below reads the actual operator-reported status.conditions (verified
+  # live against each operator's real output on this cluster) so these
+  # resources report real Healthy/Progressing/Degraded like everything else.
+  resourceHealthChecks:
+    - group: platform.stackrox.io
+      kind: Central
+      check: |
+        hs = {}
+        local available = false
+        local failed = false
+        local message = ""
+        if obj.status ~= nil and obj.status.conditions ~= nil then
+          for i, condition in ipairs(obj.status.conditions) do
+            if condition.type == "Available" and condition.status == "True" then
+              available = true
+              message = condition.message
+            end
+            if condition.type == "ReleaseFailed" and condition.status == "True" then
+              failed = true
+              message = condition.message
+            end
+          end
+        end
+        if failed then
+          hs.status = "Degraded"
+          hs.message = message
+          return hs
+        end
+        if available then
+          hs.status = "Healthy"
+          hs.message = message
+          return hs
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for Available condition"
+        return hs
+    - group: platform.stackrox.io
+      kind: SecuredCluster
+      check: |
+        hs = {}
+        local available = false
+        local failed = false
+        local message = ""
+        if obj.status ~= nil and obj.status.conditions ~= nil then
+          for i, condition in ipairs(obj.status.conditions) do
+            if condition.type == "Available" and condition.status == "True" then
+              available = true
+              message = condition.message
+            end
+            if condition.type == "ReleaseFailed" and condition.status == "True" then
+              failed = true
+              message = condition.message
+            end
+          end
+        end
+        if failed then
+          hs.status = "Degraded"
+          hs.message = message
+          return hs
+        end
+        if available then
+          hs.status = "Healthy"
+          hs.message = message
+          return hs
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for Available condition"
+        return hs
+    - group: rhtpa.io
+      kind: TrustedProfileAnalyzer
+      check: |
+        hs = {}
+        local deployed = false
+        local failed = false
+        local message = ""
+        if obj.status ~= nil and obj.status.conditions ~= nil then
+          for i, condition in ipairs(obj.status.conditions) do
+            if condition.type == "Deployed" and condition.status == "True" then
+              deployed = true
+              message = condition.message
+            end
+            if (condition.type == "ReleaseFailed" or condition.type == "Irreconcilable") and condition.status == "True" then
+              failed = true
+              message = condition.message
+            end
+          end
+        end
+        if failed then
+          hs.status = "Degraded"
+          hs.message = message
+          return hs
+        end
+        if deployed then
+          hs.status = "Healthy"
+          hs.message = message
+          return hs
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for Deployed condition"
+        return hs
+    - group: rhdh.redhat.com
+      kind: Backstage
+      check: |
+        hs = {}
+        local deployed = false
+        local deployedFailed = false
+        local message = ""
+        if obj.status ~= nil and obj.status.conditions ~= nil then
+          for i, condition in ipairs(obj.status.conditions) do
+            if condition.type == "Deployed" then
+              message = condition.message
+              if condition.status == "True" then
+                deployed = true
+              elseif condition.reason ~= nil and string.find(condition.reason, "Failed") ~= nil then
+                deployedFailed = true
+              end
+            end
+          end
+        end
+        if deployedFailed then
+          hs.status = "Degraded"
+          hs.message = message
+          return hs
+        end
+        if deployed then
+          hs.status = "Healthy"
+          hs.message = message
+          return hs
+        end
+        hs.status = "Progressing"
+        if message ~= "" then
+          hs.message = message
+        else
+          hs.message = "Waiting for Deployed condition"
+        end
+        return hs
+    - group: rhtas.redhat.com
+      kind: Securesign
+      check: |
+        hs = {}
+        local ready = false
+        local message = ""
+        if obj.status ~= nil and obj.status.conditions ~= nil then
+          for i, condition in ipairs(obj.status.conditions) do
+            if condition.type == "Ready" then
+              message = condition.message
+              if condition.status == "True" then
+                ready = true
+              end
+            end
+          end
+        end
+        if ready then
+          hs.status = "Healthy"
+          hs.message = "Securesign components are ready"
+          return hs
+        end
+        hs.status = "Progressing"
+        if message ~= "" then
+          hs.message = message
+        else
+          hs.message = "Waiting for Ready condition"
+        end
+        return hs
+    - group: pfe.rhpds.com
+      kind: Gitea
+      check: |
+        hs = {}
+        local failed = false
+        local successful = false
+        local message = ""
+        if obj.status ~= nil then
+          if obj.status.conditions ~= nil then
+            for i, condition in ipairs(obj.status.conditions) do
+              if condition.type == "Failure" and condition.status == "True" then
+                failed = true
+                message = condition.message
+              end
+              if condition.type == "Successful" and condition.status == "True" then
+                successful = true
+              end
+            end
+          end
+          if failed then
+            hs.status = "Degraded"
+            if message ~= "" then
+              hs.message = message
+            else
+              hs.message = "Gitea reconciliation failed"
+            end
+            return hs
+          end
+          if successful and obj.status.repoMigrationComplete == true and obj.status.userSetupComplete == true and obj.status.adminSetupComplete == true then
+            hs.status = "Healthy"
+            hs.message = "Gitea is ready and repositories migrated"
+            return hs
+          end
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for Gitea to finish provisioning and repo migration"
+        return hs
+{{- end }}

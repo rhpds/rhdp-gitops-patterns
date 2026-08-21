@@ -1,0 +1,25 @@
+{{- if and .Values.rhdh.enabled .Values.rhdh.userInfo.enabled }}
+{{- $baseUrl := include "rhdh.baseUrl" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-userinfo-rhdh
+  namespace: {{ .Values.rhdh.namespace }}
+  labels:
+    {{- include "rhdh.labels" . | nindent 4 }}
+    demo.redhat.com/userinfo: ""
+  annotations:
+    argocd.argoproj.io/sync-wave: "304"
+data:
+  demo_title: {{ .Values.rhdh.userInfo.title | quote }}
+  access_instructions: {{ .Values.rhdh.userInfo.instructions | quote }}
+  deployment_type: "helm"
+  operator_name: {{ .Values.rhdh.operator.name | quote }}
+  rhdh_namespace: {{ .Values.rhdh.namespace | quote }}
+  rhdh_name: {{ .Values.rhdh.name | quote }}
+  rhdh_url: {{ $baseUrl | quote }}
+  catalog_component: "sample-service"
+  cluster_domain: {{ .Values.deployer.domain | quote }}
+  cluster_api_url: {{ .Values.deployer.apiUrl | quote }}
+{{- end }}

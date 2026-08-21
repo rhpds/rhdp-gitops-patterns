@@ -1,0 +1,22 @@
+{{- if and .Values.gitea.enabled .Values.gitea.operator.enabled }}
+---
+# Gitea Operator via OLM, from the RHPDS-maintained redhat-gpte-gitea catalog
+# (see templates/operators/catalogsource.yaml). Installs into openshift-operators
+# (AllNamespaces) using the default global OperatorGroup already present there —
+# same pattern as the rhtas / pipelines Subscriptions in this chart.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ .Values.gitea.operator.name }}
+  namespace: {{ .Values.gitea.operator.namespace }}
+  labels:
+    {{- include "gitea.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "151"
+spec:
+  channel: {{ .Values.gitea.operator.channel }}
+  installPlanApproval: {{ .Values.gitea.operator.installPlanApproval }}
+  name: {{ .Values.gitea.operator.packageName }}
+  source: {{ .Values.gitea.operator.source }}
+  sourceNamespace: {{ .Values.gitea.operator.sourceNamespace }}
+{{- end }}

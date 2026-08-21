@@ -1,0 +1,30 @@
+{{- if and .Values.gitea.enabled .Values.gitea.userInfo.enabled }}
+{{- $url := include "gitea.url" . }}
+{{- $cloneUrl := include "gitea.sampleServiceCloneUrl" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-userinfo-gitea
+  namespace: {{ .Values.gitea.namespace }}
+  labels:
+    {{- include "gitea.labels" . | nindent 4 }}
+    demo.redhat.com/userinfo: ""
+  annotations:
+    argocd.argoproj.io/sync-wave: "156"
+data:
+  demo_title: {{ .Values.gitea.userInfo.title | quote }}
+  access_instructions: {{ .Values.gitea.userInfo.instructions | quote }}
+  deployment_type: "operator"
+  gitea_url: {{ $url | quote }}
+  admin_username: {{ .Values.gitea.admin.username | quote }}
+  # Demo credentials — override via values / RHDP secret injection in shared envs
+  admin_password: {{ .Values.gitea.admin.password | quote }}
+  demo_username: {{ .Values.gitea.user.username | quote }}
+  demo_password: {{ .Values.gitea.user.password | quote }}
+  sample_service_repo: {{ .Values.gitea.sampleService.repoName | quote }}
+  sample_service_clone_url: {{ $cloneUrl | quote }}
+  sample_service_upstream: {{ .Values.gitea.sampleService.repoUrl | quote }}
+  cluster_domain: {{ .Values.deployer.domain | quote }}
+  cluster_api_url: {{ .Values.deployer.apiUrl | quote }}
+{{- end }}

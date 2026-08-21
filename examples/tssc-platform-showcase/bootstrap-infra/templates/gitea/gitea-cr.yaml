@@ -1,0 +1,40 @@
+{{- if .Values.gitea.enabled }}
+{{- $host := include "gitea.routeHost" . }}
+---
+# Gitea CR (pfe.rhpds.com/v1) — operator-managed Gitea instead of a hand-rolled
+# Deployment/PVC/seed-Job. The operator provisions the instance, creates one
+# non-admin user, and migrates the sample-service reference repo directly into
+# that user's account in a single declarative apply — no seed script, no
+# assemble/overlay/patch machinery. This CR has no concept of Organizations or
+# per-repo branch/subdir selection; the repo lands at
+# {{ include "gitea.sampleServiceCloneUrl" . }} (external) /
+# gitea.{{ .Values.gitea.namespace }}.svc:3000/{{ .Values.gitea.user.username }}/{{ .Values.gitea.sampleService.repoName }}.git (in-cluster).
+apiVersion: pfe.rhpds.com/v1
+kind: Gitea
+metadata:
+  name: {{ .Values.gitea.name }}
+  namespace: {{ .Values.gitea.namespace }}
+  labels:
+    {{- include "gitea.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "155"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  giteaSsl: true
+  giteaHostname: {{ $host | quote }}
+  giteaAdminUser: {{ .Values.gitea.admin.username | quote }}
+  giteaAdminPassword: {{ .Values.gitea.admin.password | quote }}
+  giteaAdminEmail: {{ .Values.gitea.admin.email | quote }}
+  giteaDisableRegistration: true
+  giteaCreateUsers: true
+  giteaUserNumber: 1
+  giteaGenerateUserFormat: {{ .Values.gitea.user.username | quote }}
+  giteaUserPassword: {{ .Values.gitea.user.password | quote }}
+  giteaUserEmailDomain: {{ .Values.gitea.user.emailDomain | quote }}
+  giteaMigrateRepositories: true
+  giteaRepositoriesList:
+    - repo: {{ .Values.gitea.sampleService.repoUrl | quote }}
+      name: {{ .Values.gitea.sampleService.repoName | quote }}
+      private: false
+  giteaVolumeSize: {{ .Values.gitea.volumeSize | quote }}
+{{- end }}

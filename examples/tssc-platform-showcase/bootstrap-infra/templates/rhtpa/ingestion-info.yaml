@@ -1,0 +1,25 @@
+{{- if and .Values.rhtpa.enabled .Values.rhtpa.ingestionInfo.enabled }}
+{{- $serverUrl := include "rhtpa.serverUrl" . }}
+---
+# Reference notes for CycloneDX SBOM + VEX / advisory ingestion.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rhtpa-ingestion-info
+  namespace: {{ .Values.rhtpa.namespace }}
+  labels:
+    {{- include "rhtpa.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "105"
+data:
+  server_url: {{ $serverUrl | quote }}
+  supported_cyclonedx_version: {{ .Values.rhtpa.ingestionInfo.supportedCycloneDxVersion | quote }}
+  sbom_formats: "CycloneDX JSON (matches the demo-app pipeline's syft output)"
+  vex_advisory_formats: "OpenVEX + CycloneDX vulnerabilities[]; CVE list v5 / OSV importers run by default"
+  importers: >-
+    Enabled by default: cve (CVE list v5), osv-github (OSV advisories).
+    Disabled: redhat-csaf, redhat-sboms.
+  sbom_source: >-
+    The demo-app PipelineRun's syft-sbom-rhtpa Task generates a CycloneDX SBOM for the
+    sample-service image at every bootstrap build — nothing to upload manually.
+{{- end }}

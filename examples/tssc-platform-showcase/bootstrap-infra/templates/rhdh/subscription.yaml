@@ -1,0 +1,23 @@
+{{- if and .Values.rhdh.enabled .Values.rhdh.operator.enabled }}
+{{- $existingSub := lookup "operators.coreos.com/v1alpha1" "Subscription" .Values.rhdh.operator.namespace .Values.rhdh.operator.name }}
+{{- if not $existingSub.metadata }}
+---
+# RHDH Operator via OLM. Skipped at apply time if a Subscription with the same
+# name already exists.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ .Values.rhdh.operator.name }}
+  namespace: {{ .Values.rhdh.operator.namespace }}
+  labels:
+    {{- include "rhdh.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "301"
+spec:
+  channel: {{ .Values.rhdh.operator.channel }}
+  installPlanApproval: {{ .Values.rhdh.operator.installPlanApproval }}
+  name: {{ .Values.rhdh.operator.name }}
+  source: {{ .Values.rhdh.operator.source }}
+  sourceNamespace: {{ .Values.rhdh.operator.sourceNamespace }}
+{{- end }}
+{{- end }}

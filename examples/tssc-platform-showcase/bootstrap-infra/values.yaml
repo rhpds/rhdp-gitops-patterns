@@ -1,0 +1,551 @@
+# TSSC Platform Showcase — Bootstrap Infra (flat chart; no intra-repo App-of-Apps)
+#
+# This chart is a REFERENCE PATTERN, not a graded workshop lab. There is no
+# "student", no deliberately-broken state, no exercises, no "fix this" narrative,
+# no seed Jobs that assemble/overlay/patch content, and no promotion-between-
+# GitOps-repos dance. Every component below is meant to converge to Synced+Healthy
+# in ArgoCD on the very first sync, driven by declarative Custom Resources wherever
+# possible. The one deliberate exception is a Tekton PipelineRun (itself a native
+# declarative CR, not a bash script) that builds, scans, and signs the platform's
+# one demo image for real, exactly once, at bootstrap.
+#
+# Gitea is operator-managed (pfe.rhpds.com/v1 Gitea CR) with the sample-service
+# reference repo already migrated in at apply time — no seed script, no student
+# organization, no per-repo overlay machinery.
+#
+# Every component is namespaced under its own top-level values key below and
+# gated on <key>.enabled. Unlike the conservative single-component default used
+# by sibling lab charts, everything here defaults to enabled: true — this whole
+# chart IS the showcase.
+#
+# Global sync-wave scheme (component base wave + intra-component offset):
+#   -2       catalogsources (redhat-operators snapshot + Gitea operator catalog)
+#   0        namespaces
+#   1        operatorgroups / subscriptions
+#   50-54    keycloak            (OIDC IdP for RHTPA/RHTAS)
+#   80-83    pipelines           (OpenShift Pipelines / Tekton operator)
+#   100-107  rhtas, rhtpa, rhacs (share a band; no ordering guarantee needed
+#            between these three)
+#   150-156  gitea               (operator-managed; independent of the above,
+#            but needs its own CatalogSource+Subscription landed first)
+#   200-210  demoApp             (namespace/imagestream/buildconfig/rbac/pipeline,
+#            then Deployment/Service/Route, then the PipelineRun last)
+#   300-304  rhdh                (Developer Hub, with a static catalog entry
+#            for the demo app — no scaffolder, no software templates)
+
+# Auto-injected by the deployer. Do not pass these manually.
+deployer:
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
+
+# The OpenShift GitOps operator's ArgoCD *instance* CR (the whole ArgoCD install
+# this chart's own governing Application runs on) — used only by
+# templates/argocd-instance-patch.yaml to un-exclude tekton.dev PipelineRun from
+# ArgoCD's default resourceExclusions. Not this chart's own Application.
+argocdInstance:
+  name: openshift-gitops
+  namespace: openshift-gitops
+
+# ============================================================
+# Wave 50 — OIDC IdP (required before RHTPA / RHTAS OIDC)
+# ============================================================
+keycloak:
+  enabled: true
+  namespace: sso
+  name: keycloak
+  # Route host prefix → sso.<deployer.domain> (required by rhtpa.oidcIssuer helper).
+  # NOTE: some RHPDS clusters already run a platform-wide Keycloak at this same
+  # host. Leave this default as-is — per-deployment overrides (a different
+  # routeHostPrefix) are applied via the ArgoCD Application's helm values, not
+  # hardcoded here.
+  routeHostPrefix: sso
+  image: quay.io/keycloak/keycloak:26.0.2
+  replicas: 1
+  # anyuid SCC — Keycloak image UID expectations under restricted OpenShift SCCs
+  anyuidScc: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+  admin:
+    username: admin
+    password: "showcase-keycloak-admin-changeme"
+    secretName: keycloak-admin
+  # Realm + clients aligned with rhtpa.oidc.* below
+  oidc:
+    realm: tpa
+    frontendClientId: frontend
+    cliClientId: cli
+    # Must match rhtpa oidc.cliClientSecret (Secret tpa-realm-cli-clients key cli)
+    cliClientSecret: "showcase-tpa-cli-changeme"
+    demoUser:
+      username: tpa-user
+      password: "showcase-tpa-user-changeme"
+      email: tpa-user@showcase.local
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — Keycloak"
+    instructions: >-
+      SSO for the platform's OIDC-integrated components (RHTPA / Trustify).
+      Issuer https://sso.<cluster-domain>/realms/tpa. Sign in to the TPA UI as
+      tpa-user (password in this userinfo / chart values oidc.demoUser).
+      CLI client id "cli" secret matches RHTPA oidc.cliClientSecret (same chart
+      values / RHDP injection). Admin console: /admin/ (showcase-only credentials
+      — replace in shared envs).
+
+# ============================================================
+# Wave 80 — OpenShift Pipelines (Tekton) — required by the demo-app PipelineRun
+# and the RHACS Tekton Tasks
+# ============================================================
+pipelines:
+  enabled: true
+  operator:
+    enabled: true
+    name: openshift-pipelines-operator
+    packageName: openshift-pipelines-operator-rh
+    namespace: openshift-operators
+    channel: latest
+    source: rhpds-redhat-operators
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+    createOperatorGroup: false
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — OpenShift Pipelines"
+    instructions: >-
+      OpenShift Pipelines provides Tekton CRDs (Pipeline, Task, PipelineRun).
+      After the Operator is Ready, confirm: oc get crd pipelines.tekton.dev.
+      The demo-app Pipeline and its RHACS policy-gate Tasks (in stackrox) all
+      depend on this operator. The Pipelines web console plugin is enabled as
+      part of this component (see templates/pipelines/console-plugin.yaml) so
+      Pipeline/PipelineRun show up in the OpenShift web console UI.
+
+# ============================================================
+# Wave 100 — TSSC operators / platform (share one band; no ordering
+# guarantee needed between these three components)
+# ============================================================
+rhtas:
+  enabled: true
+  namespace: trusted-artifact-signer
+  name: trusted-artifact-signer
+  apiVersion: rhtas.redhat.com/v1alpha1
+
+  operator:
+    enabled: true
+    name: rhtas-operator
+    packageName: rhtas-operator
+    namespace: openshift-operators
+    channel: stable
+    source: rhpds-redhat-operators
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+    createOperatorGroup: false
+
+  securesign:
+    fulcio:
+      externalAccess: true
+      organizationName: TSSC Platform Showcase
+      organizationEmail: tssc-platform-showcase@demo.redhat.com
+      commonName: ""
+      monitoring: false
+      ctlog:
+        port: 80
+        prefix: trusted-artifact-signer
+    rekor:
+      externalAccess: true
+      monitoring: false
+      rekorSearchUI: true
+      pvcSize: 5Gi
+      backFillRedis:
+        enabled: true
+        schedule: "0 0 * * *"
+    tuf:
+      externalAccess: true
+      port: 80
+      pvcSize: 100Mi
+      keys:
+        - name: rekor.pub
+        - name: ctfe.pub
+        - name: fulcio_v1.crt.pem
+    trillian:
+      createDatabase: true
+      pvcSize: 5Gi
+      monitoring: false
+      port: 8091
+    ctlog:
+      monitoring: false
+      trillianPort: 8091
+    tsa:
+      enabled: false
+      externalAccess: false
+
+  oidc:
+    kubernetes:
+      enabled: true
+      clientID: trusted-artifact-signer
+      issuer: "https://kubernetes.default.svc"
+      issuerURL: "https://kubernetes.default.svc"
+    keycloak:
+      enabled: false
+      clientID: trusted-artifact-signer
+      issuerURL: ""
+      realm: trusted-artifact-signer
+
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — Trusted Artifact Signer"
+    instructions: >-
+      RHTAS provides keyless signing (Fulcio certificates, Rekor transparency log,
+      TUF trust root). The demo-app PipelineRun signs the sample-service image
+      with these at bootstrap. After the Securesign instance is Ready, inspect
+      it with `oc get securesign -n trusted-artifact-signer`.
+
+rhtpa:
+  enabled: true
+  namespace: trusted-profile-analyzer
+  name: trustedprofileanalyzer
+  apiVersion: rhtpa.io/v1
+
+  operator:
+    enabled: true
+    name: rhtpa-operator
+    packageName: rhtpa-operator
+    namespace: ""
+    channel: stable-v3
+    source: rhpds-redhat-operators
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+    createOperatorGroup: true
+
+  postgresql:
+    enabled: true
+    name: tpa-pgsql
+    secretName: tpa-pgsql-user
+    image: registry.redhat.io/rhel9/postgresql-16:latest
+    database: tpa
+    username: tpa
+    password: "showcase-tpa-pgsql-changeme"
+    port: "5432"
+    pvcSize: 10Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+  oidc:
+    issuerURL: ""
+    realm: tpa
+    frontendClientId: frontend
+    cliClientId: cli
+    cliClientSecret: "showcase-tpa-cli-changeme"
+    cliSecretName: tpa-realm-cli-clients
+
+  oidcWait:
+    enabled: true
+    jobName: rhtpa-oidc-wait
+    serviceAccountName: rhtpa-oidc-wait
+    serverDeployment: server
+    image: registry.access.redhat.com/ubi9/ubi:latest
+    imagePullPolicy: IfNotPresent
+    waitSeconds: "900"
+    rolloutTimeout: "600s"
+    backoffLimit: 6
+    ttlSecondsAfterFinished: 86400
+
+  trustedProfileAnalyzer:
+    storage:
+      type: filesystem
+      size: 32Gi
+    replicas: 1
+    createDatabase: true
+    migrateDatabase: true
+    createImporters: true
+    importers:
+      cve:
+        enabled: true
+        description: "CVE list v5 (advisory ingestion)"
+        period: 1d
+        source: "https://github.com/CVEProject/cvelistV5"
+      osvGithub:
+        enabled: true
+        description: "GitHub Advisory Database (OSV / advisory ingestion)"
+        path: advisories
+        period: 1d
+        source: "https://github.com/github/advisory-database"
+      redhatCsaf:
+        enabled: false
+        description: "All Red Hat CSAF / VEX-related advisories"
+        fetchRetries: 50
+        period: 1d
+        source: redhat.com
+      redhatSboms:
+        enabled: false
+        description: "All Red Hat SBOMs"
+        fetchRetries: 50
+        period: 1d
+        source: "https://access.redhat.com/security/data/sbom/beta/"
+    server:
+      resources:
+        requests:
+          cpu: "1"
+          memory: 8Gi
+
+  ingestionInfo:
+    enabled: true
+    supportedCycloneDxVersion: "1.4+"
+
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — Trusted Profile Analyzer"
+    instructions: >-
+      RHTPA is the SBOM / VEX system of record. The demo-app PipelineRun's
+      syft-sbom-rhtpa Task generates a CycloneDX SBOM for the sample-service
+      image and attempts to upload it here automatically at bootstrap.
+
+rhacs:
+  enabled: true
+  namespace: stackrox
+  apiVersion: platform.stackrox.io/v1alpha1
+
+  operator:
+    enabled: true
+    name: rhacs-operator
+    packageName: rhacs-operator
+    namespace: rhacs-operator
+    channel: stable
+    source: rhpds-redhat-operators
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+    createOperatorGroup: true
+
+  central:
+    enabled: true
+    name: stackrox-central-services
+    exposure:
+      route: true
+    persistence:
+      pvcSize: 50Gi
+    db:
+      pvcSize: 50Gi
+    scanner:
+      replicas: 2
+      autoScaling: Disabled
+    egress:
+      connectivityPolicy: Online
+
+  securedCluster:
+    enabled: true
+    name: stackrox-secured-cluster-services
+    clusterName: tssc-platform-showcase
+    admissionControl:
+      listenOnCreates: true
+      listenOnUpdates: true
+      listenOnEvents: true
+
+    # SecuredCluster cannot reconcile without the TLS secrets from a Central
+    # cluster-init bundle (Central and SecuredCluster have no built-in
+    # coupling). See templates/rhacs/init-bundle-job.yaml.
+    initBundleJob:
+      enabled: true
+      jobName: rhacs-init-bundle-mint
+      serviceAccountName: rhacs-init-bundle
+      image: registry.access.redhat.com/ubi9/ubi:latest
+      imagePullPolicy: IfNotPresent
+      bundleName: tssc-platform-showcase
+      waitSeconds: "600"
+      backoffLimit: 6
+      ttlSecondsAfterFinished: 86400
+
+  pipelineHooks:
+    enabled: true
+    taskName: acs-image-check
+    secretName: rhacs-ci-secrets
+    ciTokenJob:
+      enabled: true
+      jobName: rhacs-ci-token-mint
+      serviceAccountName: rhacs-ci-token
+      image: registry.access.redhat.com/ubi9/ubi:latest
+      imagePullPolicy: IfNotPresent
+      tokenName: showcase-ci
+      role: Continuous Integration
+      waitSeconds: "600"
+      backoffLimit: 6
+      ttlSecondsAfterFinished: 86400
+    insecureSkipTlsVerify: "true"
+    failOnSkipped: "false"
+    sbom:
+      enabled: true
+      taskName: syft-sbom-rhtpa
+      syftImage: "ghcr.io/anchore/syft:v1.18.1"
+      uploadImage: "registry.access.redhat.com/ubi9/ubi-minimal:latest"
+      # Empty → resolved at render time to RHTPA's server URL when rhtpa.enabled.
+      rhtpaUrl: ""
+      rhtpaSecretName: rhtpa-upload-token
+
+  # One-time Job that enables Central's built-in "Fixable Severity at Least
+  # Critical" BUILD policy via the REST API, so nothing needs to be imported
+  # by hand through the Central UI. See templates/rhacs/policy-import-job.yaml
+  # for exactly how it authenticates and what it assumes about the API shape.
+  policyImportJob:
+    enabled: true
+    jobName: rhacs-policy-import
+    serviceAccountName: rhacs-policy-import
+    image: registry.access.redhat.com/ubi9/ubi:latest
+    imagePullPolicy: IfNotPresent
+    policyName: "Fixable Severity at Least Critical"
+    waitSeconds: "600"
+    backoffLimit: 6
+    ttlSecondsAfterFinished: 86400
+
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — Advanced Cluster Security"
+    instructions: >-
+      Open RHACS Central (stackrox). Secret rhacs-ci-secrets is created by Job
+      rhacs-ci-token-mint (never templated by Helm — the Job owns it end to
+      end). Job rhacs-policy-import then enables the built-in "Fixable
+      Severity at Least Critical" BUILD policy via the Central API. The
+      demo-app PipelineRun's acs-image-check Task evaluates this policy
+      against the sample-service image at bootstrap.
+
+# ============================================================
+# Wave 150 — Gitea (operator-managed; independent of the 100-band components,
+# but needs its own CatalogSource + Subscription landed first)
+# ============================================================
+gitea:
+  enabled: true
+  namespace: gitea
+  name: gitea
+  routeHostPrefix: gitea
+  volumeSize: 5Gi
+
+  admin:
+    username: gitea-admin
+    password: "showcase-gitea-admin-changeme"
+    email: gitea-admin@showcase.local
+
+  user:
+    username: developer
+    password: "showcase-developer-changeme"
+    emailDomain: showcase.local
+
+  # Gitea operator CR has no concept of Organizations or per-repo branch/subdir
+  # selection — this repo migrates directly under gitea.user.username's own
+  # account (e.g. http://gitea.<ns>.svc:3000/<username>/sample-service.git).
+  sampleService:
+    repoUrl: "https://github.com/juliaaano/tssc-showcase-sample-service.git"
+    repoName: sample-service
+
+  operator:
+    enabled: true
+    name: gitea-operator
+    packageName: gitea-operator
+    namespace: openshift-operators
+    # Confirmed live against the real redhat-gpte-gitea catalog: gitea-operator.v2.1.0.
+    channel: stable
+    source: redhat-gpte-gitea
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+    createOperatorGroup: false
+
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — Gitea"
+    instructions: >-
+      Gitea is deployed via the Gitea Operator (pfe.rhpds.com/v1 Gitea CR) with
+      one user pre-created and the sample-service reference repo already
+      migrated in — nothing to seed by hand. Sign in as gitea.user.username /
+      gitea.user.password.
+
+# ============================================================
+# Wave 200 — Demo app: the platform's one reference service, built, scanned,
+# and signed exactly once at bootstrap by a real Tekton PipelineRun.
+# ============================================================
+demoApp:
+  enabled: true
+  namespace: showcase-app
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  pipeline:
+    name: sample-service-build-sign
+
+  pipelineRun:
+    # Fixed name (not generateName) — re-syncing this chart must not create
+    # duplicate runs.
+    name: sample-service-build-sign-initial
+
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — Demo Application"
+    instructions: >-
+      sample-service is the platform's reference application: built from the
+      Gitea-hosted repo, policy-checked and SBOM'd via RHACS, and keyless-signed
+      via RHTAS, all by one real Tekton PipelineRun that runs once at bootstrap.
+      Nothing to fix — just observe `oc get pipelinerun -n showcase-app` and the
+      deployed Route.
+
+# ============================================================
+# Wave 300 — Developer Hub
+# ============================================================
+rhdh:
+  enabled: true
+  namespace: rhdh
+  name: developer-hub
+  apiVersion: rhdh.redhat.com/v1alpha5
+  route:
+    enabled: true
+  database:
+    enableLocalDb: true
+
+  operator:
+    enabled: true
+    name: rhdh
+    namespace: rhdh-operator
+    channel: fast
+    source: rhpds-redhat-operators
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+    createOperatorGroup: true
+
+  appConfig:
+    title: "TSSC Platform Showcase — Developer Hub"
+    baseUrl: ""
+    catalog:
+      fileLocations:
+        - /opt/app-root/src/catalog/sample-service.yaml
+
+  # Static catalog entry for the one demo app — no scaffolder, no software
+  # templates, no per-user catalog registration flow.
+  catalog:
+    enabled: true
+    configMapName: rhdh-catalog
+    mountPath: /opt/app-root/src
+
+  # Nothing else in this showcase needs a dynamic plugin (no Gitea scaffolder
+  # publish flow), so this stays off.
+  dynamicPlugins:
+    enabled: false
+    configMapName: dynamic-plugins-rhdh
+
+  userInfo:
+    enabled: true
+    title: "TSSC Platform Showcase — Developer Hub"
+    instructions: >-
+      Open Developer Hub and browse the Software Catalog for the sample-service
+      Component — it is registered statically at bootstrap, matching the
+      catalog-info.yaml already committed in the golden repo. No scaffolding
+      step required.

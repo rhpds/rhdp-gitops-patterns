@@ -1,0 +1,162 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled .Values.rhacs.policyImportJob.enabled }}
+{{- $endpoint := include "rhacs.centralEndpoint" . }}
+---
+# One-time Job: enable the built-in "Fixable Severity at Least Critical" BUILD-stage
+# policy in Central via the REST API, so the reference platform has a real policy gate
+# on day one without anyone clicking through the Central UI.
+#
+# Central ships this policy as a default *system* policy that exists from first boot
+# but is disabled out of the box on recent RHACS versions. Rather than guess at the
+# full policy JSON schema and POST /v1/policies/import (fragile — a partial/incorrect
+# body is rejected by schema validation), this Job:
+#   1. Authenticates the same way acs-image-check does: Bearer token from Secret
+#      {{ .Values.rhacs.pipelineHooks.secretName }} (rox-api-endpoint / rox-api-token),
+#      minted by Job {{ .Values.rhacs.pipelineHooks.ciTokenJob.jobName }} at wave 105.
+#   2. GETs /v1/policies, finds the policy by exact (case-insensitive) name match,
+#      and reads its id.
+#   3. GETs /v1/policies/{id} for the full definition, flips disabled -> false, and
+#      PUTs it back — i.e. enabling Central's own existing policy rather than
+#      importing a hand-authored one, so there is no schema-shape assumption beyond
+#      "policies have an id, a name, and a disabled boolean".
+# Every branch below is intentionally non-fatal (exits 0) — this is a convenience
+# import, not a platform-health gate, and must never block the bootstrap sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.rhacs.policyImportJob.jobName }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: policy-import
+  annotations:
+    argocd.argoproj.io/sync-wave: "106"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: {{ .Values.rhacs.policyImportJob.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.rhacs.policyImportJob.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "rhacs.labels" . | nindent 8 }}
+        app.kubernetes.io/component: policy-import
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ .Values.rhacs.policyImportJob.serviceAccountName }}
+      volumes:
+        - name: rox-secret
+          secret:
+            secretName: {{ .Values.rhacs.pipelineHooks.secretName }}
+            optional: true
+      containers:
+        - name: import-policy
+          image: {{ .Values.rhacs.policyImportJob.image | quote }}
+          imagePullPolicy: {{ .Values.rhacs.policyImportJob.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: rox-secret
+              mountPath: /rox-secret
+          env:
+            - name: FALLBACK_ENDPOINT
+              value: {{ $endpoint | quote }}
+            - name: POLICY_NAME
+              value: {{ .Values.rhacs.policyImportJob.policyName | quote }}
+            - name: WAIT_SECONDS
+              value: {{ .Values.rhacs.policyImportJob.waitSeconds | quote }}
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              #!/usr/bin/env bash
+              set -uo pipefail
+              if ! command -v python3 >/dev/null 2>&1; then
+                dnf install -y -q python3 curl >/dev/null 2>&1 || true
+              fi
+
+              echo "Waiting for CI token Secret (up to ${WAIT_SECONDS}s)..."
+              deadline=$((SECONDS + WAIT_SECONDS))
+              while (( SECONDS < deadline )); do
+                if [[ -s /rox-secret/rox-api-token && -s /rox-secret/rox-api-endpoint ]]; then
+                  break
+                fi
+                sleep 10
+              done
+
+              if [[ ! -s /rox-secret/rox-api-token ]]; then
+                echo "WARN: no rox-api-token yet — skipping policy import (non-fatal)."
+                echo "Re-run this Job (or re-sync) once Job {{ .Values.rhacs.pipelineHooks.ciTokenJob.jobName }} has minted a token."
+                exit 0
+              fi
+
+              ROX_TOKEN="$(</rox-secret/rox-api-token)"
+              ROX_ENDPOINT="$(</rox-secret/rox-api-endpoint)"
+              if [[ -z "${ROX_ENDPOINT}" ]]; then
+                ROX_ENDPOINT="${FALLBACK_ENDPOINT}"
+              fi
+              export ROX_TOKEN ROX_ENDPOINT
+
+              echo "Looking up policy '${POLICY_NAME}' on ${ROX_ENDPOINT}..."
+              LIST_JSON="$(curl -sk -H "Authorization: Bearer ${ROX_TOKEN}" "https://${ROX_ENDPOINT}/v1/policies")"
+              POLICY_ID="$(printf '%s' "${LIST_JSON}" | python3 -c '
+              import json, os, sys
+              name = os.environ.get("POLICY_NAME", "").strip().lower()
+              try:
+                  data = json.load(sys.stdin)
+              except Exception:
+                  data = {}
+              for p in data.get("policies", []):
+                  if p.get("name", "").strip().lower() == name:
+                      print(p.get("id", ""))
+                      break
+              ')"
+
+              if [[ -z "${POLICY_ID}" ]]; then
+                echo "WARN: policy '${POLICY_NAME}' not found in Central's policy list on this RHACS"
+                echo "version — nothing to enable. This is non-fatal; import it manually in the UI"
+                echo "under Platform Configuration > Policy Management if desired."
+                exit 0
+              fi
+              echo "Found policy id=${POLICY_ID}"
+
+              POLICY_JSON="$(curl -sk -H "Authorization: Bearer ${ROX_TOKEN}" "https://${ROX_ENDPOINT}/v1/policies/${POLICY_ID}")"
+              ALREADY_ENABLED="$(printf '%s' "${POLICY_JSON}" | python3 -c '
+              import json, sys
+              try:
+                  d = json.load(sys.stdin)
+                  print("true" if not d.get("disabled", False) else "false")
+              except Exception:
+                  print("false")
+              ')"
+              if [[ "${ALREADY_ENABLED}" == "true" ]]; then
+                echo "Policy '${POLICY_NAME}' is already enabled — nothing to do."
+                exit 0
+              fi
+
+              UPDATED_JSON="$(printf '%s' "${POLICY_JSON}" | python3 -c '
+              import json, sys
+              try:
+                  d = json.load(sys.stdin)
+                  d["disabled"] = False
+                  print(json.dumps(d))
+              except Exception:
+                  pass
+              ')"
+              if [[ -z "${UPDATED_JSON}" ]]; then
+                echo "WARN: could not parse policy ${POLICY_ID} JSON — skipping (non-fatal)."
+                exit 0
+              fi
+
+              HTTP_CODE="$(curl -sk -o /tmp/put-response.json -w '%{http_code}' \
+                -X PUT \
+                -H "Authorization: Bearer ${ROX_TOKEN}" \
+                -H 'Content-Type: application/json' \
+                -d "${UPDATED_JSON}" \
+                "https://${ROX_ENDPOINT}/v1/policies/${POLICY_ID}")"
+
+              if [[ "${HTTP_CODE}" == "200" ]]; then
+                echo "Enabled policy '${POLICY_NAME}' (id=${POLICY_ID})."
+              else
+                echo "WARN: PUT /v1/policies/${POLICY_ID} returned HTTP ${HTTP_CODE} (non-fatal):"
+                cat /tmp/put-response.json || true
+              fi
+              exit 0
+{{- end }}

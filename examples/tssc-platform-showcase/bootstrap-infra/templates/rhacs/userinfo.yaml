@@ -1,0 +1,30 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.userInfo.enabled }}
+{{- $centralUrl := include "rhacs.centralUrl" . }}
+{{- $endpoint := include "rhacs.centralEndpoint" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-userinfo-rhacs
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    demo.redhat.com/userinfo: ""
+  annotations:
+    argocd.argoproj.io/sync-wave: "107"
+data:
+  demo_title: {{ .Values.rhacs.userInfo.title | quote }}
+  access_instructions: {{ .Values.rhacs.userInfo.instructions | quote }}
+  deployment_type: "helm"
+  operator_name: {{ .Values.rhacs.operator.packageName | quote }}
+  rhacs_namespace: {{ .Values.rhacs.namespace | quote }}
+  central_name: {{ .Values.rhacs.central.name | quote }}
+  central_url: {{ $centralUrl | quote }}
+  central_endpoint: {{ $endpoint | quote }}
+  pipeline_task: {{ .Values.rhacs.pipelineHooks.taskName | quote }}
+  ci_token_job: {{ .Values.rhacs.pipelineHooks.ciTokenJob.jobName | quote }}
+  policy_import_job: {{ .Values.rhacs.policyImportJob.jobName | quote }}
+  imported_policy: {{ .Values.rhacs.policyImportJob.policyName | quote }}
+  cluster_domain: {{ .Values.deployer.domain | quote }}
+  cluster_api_url: {{ .Values.deployer.apiUrl | quote }}
+{{- end }}

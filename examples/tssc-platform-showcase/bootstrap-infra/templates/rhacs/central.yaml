@@ -1,0 +1,40 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.central.enabled }}
+---
+# Central CR — RHACS management plane (UI, API, Scanner).
+# See: Installing RHACS on OpenShift (Operator).
+apiVersion: {{ .Values.rhacs.apiVersion }}
+kind: Central
+metadata:
+  name: {{ .Values.rhacs.central.name }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: central
+  annotations:
+    argocd.argoproj.io/sync-wave: "102"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  central:
+    exposure:
+      loadBalancer:
+        enabled: false
+      nodePort:
+        enabled: false
+      route:
+        enabled: {{ .Values.rhacs.central.exposure.route }}
+    persistence:
+      persistentVolumeClaim:
+        size: {{ .Values.rhacs.central.persistence.pvcSize | quote }}
+    db:
+      isEnabled: Default
+      persistence:
+        persistentVolumeClaim:
+          size: {{ .Values.rhacs.central.db.pvcSize | quote }}
+  scanner:
+    analyzer:
+      scaling:
+        autoScaling: {{ .Values.rhacs.central.scanner.autoScaling }}
+        replicas: {{ .Values.rhacs.central.scanner.replicas }}
+  egress:
+    connectivityPolicy: {{ .Values.rhacs.central.egress.connectivityPolicy }}
+{{- end }}

@@ -1,0 +1,31 @@
+{{- if and .Values.rhdh.enabled .Values.rhdh.catalog.enabled }}
+---
+# Static catalog entry for the platform's one reference application. No scaffolder,
+# no software templates, no per-user catalog registration flow — this Component
+# mirrors the catalog-info.yaml that already lives at the root of the golden
+# sample-service repo (https://github.com/juliaaano/tssc-showcase-sample-service),
+# so the RHDH catalog has something to show on first sync without waiting on the
+# demo-app PipelineRun or any Backstage scaffolder action.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.rhdh.catalog.configMapName }}
+  namespace: {{ .Values.rhdh.namespace }}
+  labels:
+    {{- include "rhdh.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "302"
+data:
+  sample-service.yaml: |
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: sample-service
+      description: TSSC platform showcase reference application
+      annotations:
+        backstage.io/techdocs-ref: dir:.
+    spec:
+      type: service
+      lifecycle: production
+      owner: platform-team
+{{- end }}

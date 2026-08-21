@@ -1,0 +1,67 @@
+{{- if .Values.demoApp.enabled }}
+{{- $imageRef := include "demoApp.imageRef" . }}
+---
+# Scheduled AFTER the PipelineRun's sync-wave (210) on purpose: ArgoCD's sync-wave
+# algorithm blocks progression to the next wave until every resource in the
+# current wave reports Healthy. A Deployment has a real health check, so placing
+# it at a wave BEFORE the PipelineRun that builds its image creates a permanent
+# deadlock (the Deployment can never go healthy without the image the PipelineRun
+# builds, and the PipelineRun can never be created because ArgoCD won't advance
+# past the unhealthy Deployment's wave). PipelineRun/Task/Pipeline have no
+# ArgoCD health check, so wave 210 never blocks; placing the Deployment at 211
+# lets it apply right after, and the image.openshift.io/triggers annotation then
+# rolls it automatically once the ImageStream tag lands from the build.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-service
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "demoApp.labels" . | nindent 4 }}
+    app: sample-service
+  annotations:
+    argocd.argoproj.io/sync-wave: "211"
+    image.openshift.io/triggers: >-
+      [{"from":{"kind":"ImageStreamTag","name":"sample-service:latest"},"fieldPath":"spec.template.spec.containers[0].image"}]
+spec:
+  replicas: {{ .Values.demoApp.replicas }}
+  selector:
+    matchLabels:
+      app: sample-service
+  template:
+    metadata:
+      labels:
+        {{- include "demoApp.labels" . | nindent 8 }}
+        app: sample-service
+    spec:
+      containers:
+        - name: sample-service
+          image: {{ $imageRef | quote }}
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: {{ .Values.demoApp.resources.requests.cpu | quote }}
+              memory: {{ .Values.demoApp.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.demoApp.resources.limits.cpu | quote }}
+              memory: {{ .Values.demoApp.resources.limits.memory | quote }}
+{{- end }}

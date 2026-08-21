@@ -1,0 +1,70 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled .Values.rhacs.pipelineHooks.ciTokenJob.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ci-token
+  annotations:
+    argocd.argoproj.io/sync-wave: "105"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ci-token
+  annotations:
+    argocd.argoproj.io/sync-wave: "105"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "patch", "update"]
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ci-token
+  annotations:
+    argocd.argoproj.io/sync-wave: "105"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+    namespace: {{ .Values.rhacs.namespace }}
+---
+# UBI Job installs oc/python via dnf — needs anyuid (same pattern as other one-time Jobs).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}-scc-anyuid
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ci-token
+  annotations:
+    argocd.argoproj.io/sync-wave: "105"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:anyuid
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+    namespace: {{ .Values.rhacs.namespace }}
+{{- end }}

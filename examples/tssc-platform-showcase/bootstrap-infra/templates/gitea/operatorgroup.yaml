@@ -1,0 +1,15 @@
+{{- if and .Values.gitea.enabled .Values.gitea.operator.enabled .Values.gitea.operator.createOperatorGroup }}
+---
+# Optional dedicated OperatorGroup — only needed if gitea.operator.namespace is not
+# openshift-operators (which already has a global AllNamespaces OperatorGroup).
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: {{ .Values.gitea.operator.name }}-operator-group
+  namespace: {{ .Values.gitea.operator.namespace }}
+  labels:
+    {{- include "gitea.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "151"
+spec: {}
+{{- end }}

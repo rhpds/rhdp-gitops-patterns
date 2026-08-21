@@ -1,0 +1,15 @@
+{{- if .Values.demoApp.enabled }}
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: sample-service
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "demoApp.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "201"
+spec:
+  lookupPolicy:
+    local: true
+{{- end }}

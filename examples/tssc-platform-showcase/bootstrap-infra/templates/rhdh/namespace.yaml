@@ -1,0 +1,22 @@
+{{- if .Values.rhdh.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.rhdh.namespace }}
+  labels:
+    {{- include "rhdh.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "300"
+{{- if and .Values.rhdh.operator.enabled (ne .Values.rhdh.operator.namespace .Values.rhdh.namespace) }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.rhdh.operator.namespace }}
+  labels:
+    {{- include "rhdh.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "300"
+{{- end }}
+{{- end }}

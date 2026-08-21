@@ -1,0 +1,21 @@
+{{- if .Values.demoApp.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-service
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "demoApp.labels" . | nindent 4 }}
+    app: sample-service
+  annotations:
+    argocd.argoproj.io/sync-wave: "205"
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: sample-service
+{{- end }}

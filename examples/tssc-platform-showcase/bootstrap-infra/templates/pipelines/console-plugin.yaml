@@ -1,0 +1,32 @@
+{{- if .Values.pipelines.enabled }}
+---
+# Enables the OpenShift Pipelines web console plugin (Pipeline/PipelineRun UI).
+# Installing the operator does not do this by itself — its CSV only declares
+# intent via a console.openshift.io/plugins annotation, which is read by the
+# INTERACTIVE "Install Operator" web console flow (the checkbox that offers to
+# enable the plugin); a headless/GitOps Subscription apply never triggers that
+# checkbox, so the plugin stays registered (`oc get consoleplugin`) but
+# disabled. There is no separate install-time API for this — the interactive
+# checkbox performs the exact same patch below under the hood.
+#
+# console.operator.openshift.io/cluster spec.plugins is a plain atomic array
+# (verified against the live CRD: no x-kubernetes-list-type/merge-key), and
+# real RHPDS clusters already have other platform plugins on it. This hardcodes
+# the full list observed live on both target clusters (odf-console,
+# monitoring-plugin, networking-console-plugin, lightspeed-console-plugin) plus
+# pipelines-console-plugin — a plain declarative patch, not a Job. If a future
+# target cluster has a different baseline set of plugins, update this list.
+apiVersion: operator.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "85"
+spec:
+  plugins:
+    - odf-console
+    - monitoring-plugin
+    - networking-console-plugin
+    - lightspeed-console-plugin
+    - pipelines-console-plugin
+{{- end }}

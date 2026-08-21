@@ -1,0 +1,23 @@
+{{- if and .Values.rhtas.enabled .Values.rhtas.operator.enabled }}
+{{- $existingSub := lookup "operators.coreos.com/v1alpha1" "Subscription" .Values.rhtas.operator.namespace .Values.rhtas.operator.name }}
+{{- if not $existingSub.metadata }}
+---
+# RHTAS Operator via OLM — Trusted Software Factory / RHADS pattern.
+# Installs into openshift-operators (AllNamespaces). Skipped if Subscription exists.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ .Values.rhtas.operator.name }}
+  namespace: {{ .Values.rhtas.operator.namespace }}
+  labels:
+    {{- include "rhtas.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "101"
+spec:
+  channel: {{ .Values.rhtas.operator.channel }}
+  installPlanApproval: {{ .Values.rhtas.operator.installPlanApproval }}
+  name: {{ .Values.rhtas.operator.packageName }}
+  source: {{ .Values.rhtas.operator.source }}
+  sourceNamespace: {{ .Values.rhtas.operator.sourceNamespace }}
+{{- end }}
+{{- end }}

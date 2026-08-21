@@ -1,0 +1,22 @@
+{{- if .Values.rhacs.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "100"
+{{- if and .Values.rhacs.operator.enabled (ne .Values.rhacs.operator.namespace .Values.rhacs.namespace) }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.rhacs.operator.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "100"
+{{- end }}
+{{- end }}

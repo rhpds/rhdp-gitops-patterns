@@ -1,0 +1,36 @@
+{{- if or .Values.pipelines.enabled .Values.rhtas.enabled .Values.rhtpa.enabled .Values.rhacs.enabled .Values.rhdh.enabled }}
+---
+# Generated from quay.io/rhpds/olm_snapshot_redhat_catalog — pinned for reproducibility.
+# One CatalogSource for every redhat-operators Subscription in this chart
+# (pipelines, rhtas, rhtpa, rhacs, rhdh) — a single snapshot image contains
+# the whole catalog. Verified against OCP 4.22 at generation time.
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: rhpds-redhat-operators
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  sourceType: grpc
+  image: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+  displayName: RHPDS Pinned Snapshot (redhat-operators, OCP 4.22)
+  publisher: Red Hat GPTE
+{{- end }}
+{{- if .Values.gitea.enabled }}
+---
+# RHPDS-maintained catalog carrying the Gitea Operator (pfe.rhpds.com/v1 Gitea CRD).
+# Not part of the redhat-operators snapshot above — separate small catalog image.
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: redhat-gpte-gitea
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  sourceType: grpc
+  image: quay.io/rhpds/gitea-catalog:latest
+  displayName: Red Hat GPTE (Gitea Operator)
+  publisher: Red Hat GPTE
+{{- end }}

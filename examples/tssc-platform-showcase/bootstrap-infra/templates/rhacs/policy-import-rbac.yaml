@@ -1,0 +1,35 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled .Values.rhacs.policyImportJob.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.rhacs.policyImportJob.serviceAccountName }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: policy-import
+  annotations:
+    argocd.argoproj.io/sync-wave: "106"
+---
+# UBI Job installs python3/curl via dnf — needs anyuid (same pattern as other one-time Jobs).
+# No Kubernetes API access is required: the CI token Secret is mounted as a volume,
+# not fetched via the API.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.rhacs.policyImportJob.serviceAccountName }}-scc-anyuid
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: policy-import
+  annotations:
+    argocd.argoproj.io/sync-wave: "106"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:anyuid
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.rhacs.policyImportJob.serviceAccountName }}
+    namespace: {{ .Values.rhacs.namespace }}
+{{- end }}

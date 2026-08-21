@@ -1,0 +1,54 @@
+{{- if .Values.demoApp.enabled }}
+{{- $repoUrl := include "demoApp.giteaRepoUrl" . }}
+{{- $imageRef := include "demoApp.imageRef" . }}
+{{- $fulcioUrl := include "rhtas.fulcioUrl" . }}
+{{- $rekorUrl := include "rhtas.rekorUrl" . }}
+{{- $tufUrl := include "rhtas.tufUrl" . }}
+---
+# Fixed-name PipelineRun (not generateName) so re-syncing this chart never creates
+# a duplicate run — this is the one real build+scan+sign of the platform's demo
+# image, run once at bootstrap, not simulated and not re-triggered by ArgoCD.
+# SkipDryRunOnMissingResource is required because this depends on CRDs (Pipeline,
+# and the resolver-referenced Tasks in stackrox/openshift-pipelines) that may not
+# yet be Established on the very first apply.
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: {{ .Values.demoApp.pipelineRun.name }}
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "demoApp.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "210"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  pipelineRef:
+    name: {{ .Values.demoApp.pipeline.name }}
+  params:
+    - name: repo-url
+      value: {{ $repoUrl | quote }}
+    - name: revision
+      value: main
+    - name: image-url
+      value: {{ $imageRef | quote }}
+    - name: buildconfig-name
+      value: sample-service
+    - name: cosign-fulcio-url
+      value: {{ $fulcioUrl | quote }}
+    - name: cosign-rekor-url
+      value: {{ $rekorUrl | quote }}
+    - name: cosign-tuf-url
+      value: {{ $tufUrl | quote }}
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 2Gi
+    - name: sbom
+      emptyDir: {}
+  taskRunTemplate:
+    serviceAccountName: pipeline
+{{- end }}

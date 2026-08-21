@@ -1,0 +1,241 @@
+{{- if .Values.demoApp.enabled }}
+---
+# Tekton Pipeline — hybrid build (BuildConfig) + ACS + SBOM + RHTAS keyless cosign.
+# Runs exactly once at bootstrap via the fixed-name PipelineRun in pipelinerun.yaml.
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: {{ .Values.demoApp.pipeline.name }}
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "demoApp.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "204"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  params:
+    - name: repo-url
+      type: string
+      description: Gitea clone URL for the sample-service reference repo
+    - name: revision
+      type: string
+      default: main
+    - name: image-url
+      type: string
+      description: >-
+        Internal registry tag (image-registry.openshift-image-registry.svc:5000/<ns>/sample-service:latest)
+    - name: buildconfig-name
+      type: string
+      default: sample-service
+    - name: cosign-fulcio-url
+      type: string
+      default: ""
+    - name: cosign-rekor-url
+      type: string
+      default: ""
+    - name: cosign-tuf-url
+      type: string
+      default: ""
+      description: TUF root/mirror URL from RHTAS
+  workspaces:
+    - name: source
+    - name: sbom
+  tasks:
+    # Gitea's own sync-wave (155) runs well before this PipelineRun's (210),
+    # but the Gitea CRD has no ArgoCD health check registered, so ArgoCD
+    # advances past that wave as soon as the CR is created — not once the
+    # operator has actually finished standing up the Gitea pod/route/repo
+    # migration. On a slower cluster/operator that leaves a real race window
+    # where the clone below hits "connection refused" because the Gitea pod
+    # isn't listening yet. Wait for a plain TCP connect to the repo host:port
+    # (what git itself needs) before ever attempting the clone.
+    - name: wait-for-gitea
+      params:
+        - name: repo-url
+          value: $(params.repo-url)
+      taskSpec:
+        params:
+          - name: repo-url
+            type: string
+        steps:
+          - name: wait
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              URL="$(params.repo-url)"
+              HOSTPORT="${URL#*://}"
+              HOSTPORT="${HOSTPORT%%/*}"
+              HOST="${HOSTPORT%%:*}"
+              PORT="${HOSTPORT##*:}"
+              if [[ "${PORT}" == "${HOST}" ]]; then
+                PORT=80
+              fi
+              echo "Waiting for ${HOST}:${PORT} (Gitea) to accept TCP connections (up to 300s)..."
+              for i in $(seq 1 60); do
+                if timeout 3 bash -c "echo > /dev/tcp/${HOST}/${PORT}" 2>/dev/null; then
+                  echo "Gitea is reachable at ${HOST}:${PORT}."
+                  exit 0
+                fi
+                echo "Attempt ${i}/60: ${HOST}:${PORT} not reachable yet, retrying in 5s..."
+                sleep 5
+              done
+              echo "Timed out waiting for Gitea (${HOST}:${PORT}) to become reachable" >&2
+              exit 1
+
+    - name: clone
+      runAfter: [wait-for-gitea]
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: namespace
+            value: openshift-pipelines
+      workspaces:
+        - name: output
+          workspace: source
+      params:
+        - name: URL
+          value: $(params.repo-url)
+        - name: REVISION
+          value: $(params.revision)
+
+    # OpenShift Binary BuildConfig (Dockerfile) — triggered directly from the
+    # git-cloned workspace via --from-dir, regardless of the BuildConfig's own
+    # configured Git source (see buildconfig.yaml header comment).
+    - name: openshift-build
+      runAfter: [clone]
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: buildconfig-name
+          value: $(params.buildconfig-name)
+      taskSpec:
+        params:
+          - name: buildconfig-name
+            type: string
+        workspaces:
+          - name: source
+        steps:
+          - name: start-build
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              BC="$(params.buildconfig-name)"
+              SRC="$(workspaces.source.path)"
+              echo "Starting Binary build ${BC} from ${SRC}"
+              oc start-build "${BC}" --from-dir="${SRC}" --follow --wait
+              echo "Build ${BC} finished"
+
+    - name: acs-image-check
+      runAfter: [openshift-build]
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: acs-image-check
+          - name: namespace
+            value: stackrox
+      params:
+        - name: image
+          value: $(params.image-url)
+
+    - name: syft-sbom-rhtpa
+      runAfter: [acs-image-check]
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: syft-sbom-rhtpa
+          - name: namespace
+            value: stackrox
+      workspaces:
+        - name: source
+          workspace: source
+        - name: sbom
+          workspace: sbom
+      params:
+        - name: image
+          value: $(params.image-url)
+
+    - name: cosign-sign-keyless
+      runAfter: [syft-sbom-rhtpa]
+      taskSpec:
+        params:
+          - name: image
+            type: string
+          - name: fulcio-url
+            type: string
+          - name: rekor-url
+            type: string
+          - name: tuf-url
+            type: string
+        volumes:
+          # Audience must match Securesign Fulcio OIDC ClientID (trusted-artifact-signer)
+          - name: oidc-token
+            projected:
+              sources:
+                - serviceAccountToken:
+                    path: token
+                    expirationSeconds: 600
+                    audience: trusted-artifact-signer
+        steps:
+          - name: sign
+            image: registry.redhat.io/rhtas/cosign-rhel9:1.3.0
+            volumeMounts:
+              - name: oidc-token
+                mountPath: /var/run/sigstore/cosign
+                readOnly: true
+            env:
+              - name: IMAGE
+                value: $(params.image)
+              - name: FULCIO_URL
+                value: $(params.fulcio-url)
+              - name: REKOR_URL
+                value: $(params.rekor-url)
+              - name: TUF_URL
+                value: $(params.tuf-url)
+              - name: HOME
+                value: /tmp
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              if [[ -n "${TUF_URL}" ]]; then
+                cosign initialize --mirror="${TUF_URL}" --root="${TUF_URL}/root.json"
+              fi
+              TOKEN_FILE=/var/run/sigstore/cosign/token
+              EXTRA=(
+                --identity-token="${TOKEN_FILE}"
+                --oidc-issuer=https://kubernetes.default.svc
+                --oidc-client-id=trusted-artifact-signer
+                --fulcio-auth-flow=token
+                --allow-http-registry
+                --allow-insecure-registry
+              )
+              if [[ -n "${FULCIO_URL}" ]]; then
+                EXTRA+=(--fulcio-url="${FULCIO_URL}")
+              fi
+              if [[ -n "${REKOR_URL}" ]]; then
+                EXTRA+=(--rekor-url="${REKOR_URL}")
+              fi
+              cosign sign --yes "${EXTRA[@]}" "${IMAGE}"
+              echo "Signed ${IMAGE} (keyless / RHTAS)"
+      params:
+        - name: image
+          value: $(params.image-url)
+        - name: fulcio-url
+          value: $(params.cosign-fulcio-url)
+        - name: rekor-url
+          value: $(params.cosign-rekor-url)
+        - name: tuf-url
+          value: $(params.cosign-tuf-url)
+{{- end }}

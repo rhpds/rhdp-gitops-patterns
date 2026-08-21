@@ -1,0 +1,43 @@
+{{- if .Values.rhdh.enabled }}
+{{- $baseUrl := include "rhdh.baseUrl" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-rhdh
+  namespace: {{ .Values.rhdh.namespace }}
+  labels:
+    {{- include "rhdh.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "302"
+data:
+  app-config-rhdh.yaml: |
+    app:
+      title: {{ .Values.rhdh.appConfig.title | quote }}
+      baseUrl: {{ $baseUrl | quote }}
+    backend:
+      baseUrl: {{ $baseUrl | quote }}
+      cors:
+        origin: {{ $baseUrl | quote }}
+    organization:
+      name: TSSC Platform Showcase
+    # No IdP wired into RHDH itself for this showcase — Guest only (no GitHub OAuth).
+    # Without signInPage: guest the UI offers a broken GitHub button
+    # (Unknown auth provider 'github').
+    auth:
+      environment: development
+      providers:
+        guest:
+          dangerouslyAllowOutsideDevelopment: true
+    signInPage: guest
+    catalog:
+      locations:
+{{- if .Values.rhdh.catalog.enabled }}
+{{- range .Values.rhdh.appConfig.catalog.fileLocations }}
+        - type: file
+          target: {{ . | quote }}
+          rules:
+            - allow: [Component]
+{{- end }}
+{{- end }}
+{{- end }}

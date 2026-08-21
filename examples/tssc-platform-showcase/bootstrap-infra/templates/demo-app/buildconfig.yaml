@@ -1,0 +1,35 @@
+{{- if .Values.demoApp.enabled }}
+{{- $repoUrl := include "demoApp.giteaRepoUrl" . }}
+---
+# Git-sourced BuildConfig for documentation/reference purposes (`oc describe bc`
+# shows exactly where this image comes from). The demo-app Pipeline actually
+# triggers builds with `oc start-build --from-dir=<git-clone workspace>`, which
+# overrides the configured source with a one-off binary input for that build —
+# so this BuildConfig's Git source is never itself fetched by the Pipeline, but
+# stays accurate as a description of the true upstream.
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: sample-service
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "demoApp.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "202"
+spec:
+  successfulBuildsHistoryLimit: 3
+  failedBuildsHistoryLimit: 3
+  source:
+    type: Git
+    git:
+      uri: {{ $repoUrl | quote }}
+      ref: main
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: sample-service:latest
+{{- end }}

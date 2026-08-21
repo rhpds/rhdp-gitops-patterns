@@ -1,0 +1,25 @@
+{{- if and .Values.demoApp.enabled .Values.demoApp.userInfo.enabled }}
+{{- $host := include "demoApp.routeHost" . }}
+{{- $repoUrl := include "demoApp.giteaRepoUrl" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-userinfo-demo-app
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "demoApp.labels" . | nindent 4 }}
+    demo.redhat.com/userinfo: ""
+  annotations:
+    argocd.argoproj.io/sync-wave: "206"
+data:
+  demo_title: {{ .Values.demoApp.userInfo.title | quote }}
+  access_instructions: {{ .Values.demoApp.userInfo.instructions | quote }}
+  deployment_type: "helm+tekton"
+  app_url: {{ printf "https://%s" $host | quote }}
+  source_repo: {{ $repoUrl | quote }}
+  pipeline_name: {{ .Values.demoApp.pipeline.name | quote }}
+  pipelinerun_name: {{ .Values.demoApp.pipelineRun.name | quote }}
+  cluster_domain: {{ .Values.deployer.domain | quote }}
+  cluster_api_url: {{ .Values.deployer.apiUrl | quote }}
+{{- end }}

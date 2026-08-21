@@ -1,0 +1,34 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.securedCluster.enabled }}
+---
+# SecuredCluster — Sensor / Collector / Admission on the showcase cluster.
+# Scheduled at wave 104, AFTER the wave-103 rhacs-init-bundle-mint Job (a Sync
+# hook, which ArgoCD waits to complete before advancing). The RHACS operator's
+# securedcluster-controller only reconciles on changes to the CR itself (it
+# does not watch arbitrary Secrets in the namespace), and retries failed
+# reconciles on a slow exponential backoff. If this CR is created before the
+# init-bundle secrets (sensor-tls/collector-tls/admission-control-tls) exist,
+# its first reconcile permanently fails with "some init-bundle secrets
+# missing" and can sit backed off for many minutes before naturally retrying.
+# Ordering the CR after the Job guarantees the secrets are already present on
+# the CR's very first reconcile.
+apiVersion: {{ .Values.rhacs.apiVersion }}
+kind: SecuredCluster
+metadata:
+  name: {{ .Values.rhacs.securedCluster.name }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: secured-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "104"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  clusterName: {{ .Values.rhacs.securedCluster.clusterName | quote }}
+  admissionControl:
+    listenOnCreates: {{ .Values.rhacs.securedCluster.admissionControl.listenOnCreates }}
+    listenOnUpdates: {{ .Values.rhacs.securedCluster.admissionControl.listenOnUpdates }}
+    listenOnEvents: {{ .Values.rhacs.securedCluster.admissionControl.listenOnEvents }}
+  perNode:
+    collector:
+      collection: CORE_BPF
+{{- end }}

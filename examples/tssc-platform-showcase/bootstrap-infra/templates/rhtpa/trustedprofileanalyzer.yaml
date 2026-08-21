@@ -1,0 +1,201 @@
+{{- if .Values.rhtpa.enabled }}
+{{- $issuer := include "rhtpa.oidcIssuer" . }}
+{{- $appDomain := include "rhtpa.appDomain" . }}
+---
+# TrustedProfileAnalyzer CR — SBOM (CycloneDX) + VEX/advisory ingestion (Trustify / RHTPA).
+# Reuse: RHADS / build-secured-dev-workflows tpa-instance pattern.
+apiVersion: {{ .Values.rhtpa.apiVersion }}
+kind: TrustedProfileAnalyzer
+metadata:
+  name: {{ .Values.rhtpa.name }}
+  namespace: {{ .Values.rhtpa.namespace }}
+  labels:
+    {{- include "rhtpa.labels" . | nindent 4 }}
+    app.kubernetes.io/component: trusted-profile-analyzer
+  annotations:
+    argocd.argoproj.io/sync-wave: "103"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partOf: trustify
+  replicas: {{ .Values.rhtpa.trustedProfileAnalyzer.replicas }}
+  appDomain: {{ $appDomain | quote }}
+  tracing:
+    enabled: false
+  metrics:
+    enabled: false
+  openshift:
+    useServiceCa: true
+  ingress:
+    className: openshift-default
+  tls:
+    additionalTrustAnchor: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    serviceEnabled: true
+
+  storage:
+    type: {{ .Values.rhtpa.trustedProfileAnalyzer.storage.type | quote }}
+    size: {{ .Values.rhtpa.trustedProfileAnalyzer.storage.size | quote }}
+
+  oidc:
+    issuerUrl: {{ $issuer | quote }}
+    clients:
+      cli:
+        clientId: {{ .Values.rhtpa.oidc.cliClientId | quote }}
+        clientSecret:
+          valueFrom:
+            secretKeyRef:
+              key: cli
+              name: {{ .Values.rhtpa.oidc.cliSecretName }}
+      frontend:
+        clientId: {{ .Values.rhtpa.oidc.frontendClientId | quote }}
+
+  database:
+    host:
+      valueFrom:
+        secretKeyRef:
+          key: host
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    name:
+      valueFrom:
+        secretKeyRef:
+          key: dbname
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    password:
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    port:
+      valueFrom:
+        secretKeyRef:
+          key: port
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    username:
+      valueFrom:
+        secretKeyRef:
+          key: user
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    sslMode: disable
+
+  createDatabase:
+    host:
+      valueFrom:
+        secretKeyRef:
+          key: host
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    name:
+      valueFrom:
+        secretKeyRef:
+          key: dbname
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    password:
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    port:
+      valueFrom:
+        secretKeyRef:
+          key: port
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    username:
+      valueFrom:
+        secretKeyRef:
+          key: user
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+
+  migrateDatabase:
+    host:
+      valueFrom:
+        secretKeyRef:
+          key: host
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    name:
+      valueFrom:
+        secretKeyRef:
+          key: dbname
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    password:
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    port:
+      valueFrom:
+        secretKeyRef:
+          key: port
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+    username:
+      valueFrom:
+        secretKeyRef:
+          key: user
+          name: {{ .Values.rhtpa.postgresql.secretName }}
+
+  modules:
+    createDatabase:
+      enabled: {{ .Values.rhtpa.trustedProfileAnalyzer.createDatabase }}
+    migrateDatabase:
+      enabled: {{ .Values.rhtpa.trustedProfileAnalyzer.migrateDatabase }}
+    createImporters:
+      enabled: {{ .Values.rhtpa.trustedProfileAnalyzer.createImporters }}
+{{- if .Values.rhtpa.trustedProfileAnalyzer.createImporters }}
+      importers:
+{{- if .Values.rhtpa.trustedProfileAnalyzer.importers.cve.enabled }}
+        cve:
+          cve:
+            description: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.cve.description | quote }}
+            disabled: false
+            period: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.cve.period | quote }}
+            source: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.cve.source | quote }}
+{{- end }}
+{{- if .Values.rhtpa.trustedProfileAnalyzer.importers.osvGithub.enabled }}
+        osv-github:
+          osv:
+            description: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.osvGithub.description | quote }}
+            disabled: false
+            path: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.osvGithub.path | quote }}
+            period: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.osvGithub.period | quote }}
+            source: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.osvGithub.source | quote }}
+{{- end }}
+{{- if .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.enabled }}
+        redhat-csaf:
+          csaf:
+            description: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.description | quote }}
+            disabled: false
+            fetchRetries: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.fetchRetries }}
+            period: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.period | quote }}
+            source: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.source | quote }}
+{{- else }}
+        redhat-csaf:
+          csaf:
+            description: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.description | quote }}
+            disabled: true
+            fetchRetries: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.fetchRetries }}
+            period: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.period | quote }}
+            source: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatCsaf.source | quote }}
+{{- end }}
+{{- if .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.enabled }}
+        redhat-sboms:
+          sbom:
+            description: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.description | quote }}
+            disabled: false
+            fetchRetries: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.fetchRetries }}
+            period: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.period | quote }}
+            source: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.source | quote }}
+{{- else }}
+        redhat-sboms:
+          sbom:
+            description: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.description | quote }}
+            disabled: true
+            fetchRetries: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.fetchRetries }}
+            period: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.period | quote }}
+            source: {{ .Values.rhtpa.trustedProfileAnalyzer.importers.redhatSboms.source | quote }}
+{{- end }}
+{{- end }}
+    server:
+      enabled: true
+      replicas: {{ .Values.rhtpa.trustedProfileAnalyzer.replicas }}
+      resources:
+        requests:
+          cpu: {{ .Values.rhtpa.trustedProfileAnalyzer.server.resources.requests.cpu | quote }}
+          memory: {{ .Values.rhtpa.trustedProfileAnalyzer.server.resources.requests.memory | quote }}
+{{- end }}
