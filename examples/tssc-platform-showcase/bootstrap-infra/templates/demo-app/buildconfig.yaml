@@ -3,10 +3,13 @@
 ---
 # Git-sourced BuildConfig for documentation/reference purposes (`oc describe bc`
 # shows exactly where this image comes from). The demo-app Pipeline actually
-# triggers builds with `oc start-build --from-dir=<git-clone workspace>`, which
-# overrides the configured source with a one-off binary input for that build —
-# so this BuildConfig's Git source is never itself fetched by the Pipeline, but
-# stays accurate as a description of the true upstream.
+# triggers builds with `oc start-build --from-dir=<git-clone workspace>/<app-subdir>`,
+# which overrides the configured source with a one-off binary input for that
+# build — so this BuildConfig's Git source is never itself fetched by the
+# Pipeline, but stays accurate as a description of the true upstream: the
+# whole rhdp-gitops-patterns monorepo (contextDir scopes it to the app's
+# subdirectory — see values.yaml gitea.migratedRepo comment for why the repo
+# is the whole monorepo, not a standalone sample-service repo).
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
@@ -24,6 +27,7 @@ spec:
     git:
       uri: {{ $repoUrl | quote }}
       ref: main
+    contextDir: {{ .Values.gitea.migratedRepo.appSubdir | quote }}
   strategy:
     type: Docker
     dockerStrategy:

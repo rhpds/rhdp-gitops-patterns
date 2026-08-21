@@ -2,9 +2,9 @@
 ---
 # Static catalog entry for the platform's one reference application. No scaffolder,
 # no software templates, no per-user catalog registration flow — this Component
-# mirrors the catalog-info.yaml that already lives at the root of the golden
-# sample-service repo (https://github.com/juliaaano/tssc-showcase-sample-service),
-# so the RHDH catalog has something to show on first sync without waiting on the
+# mirrors the catalog-info.yaml that already lives at
+# examples/tssc-platform-showcase/sample-service in this same monorepo, so the
+# RHDH catalog has something to show on first sync without waiting on the
 # demo-app PipelineRun or any Backstage scaffolder action.
 apiVersion: v1
 kind: ConfigMap

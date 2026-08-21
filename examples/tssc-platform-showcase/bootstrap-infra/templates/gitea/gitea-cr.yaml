@@ -3,12 +3,17 @@
 ---
 # Gitea CR (pfe.rhpds.com/v1) — operator-managed Gitea instead of a hand-rolled
 # Deployment/PVC/seed-Job. The operator provisions the instance, creates one
-# non-admin user, and migrates the sample-service reference repo directly into
-# that user's account in a single declarative apply — no seed script, no
-# assemble/overlay/patch machinery. This CR has no concept of Organizations or
-# per-repo branch/subdir selection; the repo lands at
-# {{ include "gitea.sampleServiceCloneUrl" . }} (external) /
-# gitea.{{ .Values.gitea.namespace }}.svc:3000/{{ .Values.gitea.user.username }}/{{ .Values.gitea.sampleService.repoName }}.git (in-cluster).
+# non-admin user, and migrates a repo directly into that user's account in a
+# single declarative apply — no seed script, no assemble/overlay/patch
+# machinery. This CR has no concept of Organizations or per-repo branch/subdir
+# selection, so sample-service living at
+# examples/tssc-platform-showcase/sample-service inside this same monorepo
+# means migrating the WHOLE rhdp-gitops-patterns repo (a deliberate, accepted
+# tradeoff — see values.yaml gitea.migratedRepo). It lands at
+# {{ include "gitea.migratedRepoCloneUrl" . }} (external) /
+# gitea.{{ .Values.gitea.namespace }}.svc:3000/{{ .Values.gitea.user.username }}/{{ .Values.gitea.migratedRepo.repoName }}.git (in-cluster).
+# The demo-app Pipeline's clone step scopes the actual checked-out content to
+# gitea.migratedRepo.appSubdir via SPARSE_CHECKOUT_DIRECTORIES.
 apiVersion: pfe.rhpds.com/v1
 kind: Gitea
 metadata:
@@ -33,8 +38,8 @@ spec:
   giteaUserEmailDomain: {{ .Values.gitea.user.emailDomain | quote }}
   giteaMigrateRepositories: true
   giteaRepositoriesList:
-    - repo: {{ .Values.gitea.sampleService.repoUrl | quote }}
-      name: {{ .Values.gitea.sampleService.repoName | quote }}
+    - repo: {{ .Values.gitea.migratedRepo.repoUrl | quote }}
+      name: {{ .Values.gitea.migratedRepo.repoName | quote }}
       private: false
   giteaVolumeSize: {{ .Values.gitea.volumeSize | quote }}
 {{- end }}

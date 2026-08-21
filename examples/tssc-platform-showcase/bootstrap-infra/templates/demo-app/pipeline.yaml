@@ -16,10 +16,17 @@ spec:
   params:
     - name: repo-url
       type: string
-      description: Gitea clone URL for the sample-service reference repo
+      description: >-
+        Gitea clone URL for the migrated repo (the whole rhdp-gitops-patterns
+        monorepo — sample-service lives at app-subdir inside it)
     - name: revision
       type: string
       default: main
+    - name: app-subdir
+      type: string
+      description: >-
+        Path within the cloned repo to the sample-service app
+        (examples/tssc-platform-showcase/sample-service)
     - name: image-url
       type: string
       description: >-
@@ -102,10 +109,23 @@ spec:
           value: $(params.repo-url)
         - name: REVISION
           value: $(params.revision)
+        # repo-url now points at the whole rhdp-gitops-patterns monorepo (see
+        # values.yaml gitea.migratedRepo comment). DEPTH is already 1 by
+        # default on this Task (confirmed against the live Task on cluster),
+        # set explicitly here so it stays shallow even if that default ever
+        # changes. SPARSE_CHECKOUT_DIRECTORIES scopes the actual checked-out
+        # working tree to just the app subdir instead of every other example
+        # in the repo — the clone still touches the whole repo's refs, but
+        # disk/workspace content is limited to what the build actually needs.
+        - name: DEPTH
+          value: "1"
+        - name: SPARSE_CHECKOUT_DIRECTORIES
+          value: $(params.app-subdir)
 
     # OpenShift Binary BuildConfig (Dockerfile) — triggered directly from the
     # git-cloned workspace via --from-dir, regardless of the BuildConfig's own
-    # configured Git source (see buildconfig.yaml header comment).
+    # configured Git source (see buildconfig.yaml header comment). Builds from
+    # the app-subdir within the cloned monorepo workspace, not the workspace root.
     - name: openshift-build
       runAfter: [clone]
       workspaces:
@@ -114,9 +134,13 @@ spec:
       params:
         - name: buildconfig-name
           value: $(params.buildconfig-name)
+        - name: app-subdir
+          value: $(params.app-subdir)
       taskSpec:
         params:
           - name: buildconfig-name
+            type: string
+          - name: app-subdir
             type: string
         workspaces:
           - name: source
@@ -127,7 +151,7 @@ spec:
               #!/usr/bin/env bash
               set -euo pipefail
               BC="$(params.buildconfig-name)"
-              SRC="$(workspaces.source.path)"
+              SRC="$(workspaces.source.path)/$(params.app-subdir)"
               echo "Starting Binary build ${BC} from ${SRC}"
               oc start-build "${BC}" --from-dir="${SRC}" --follow --wait
               echo "Build ${BC} finished"

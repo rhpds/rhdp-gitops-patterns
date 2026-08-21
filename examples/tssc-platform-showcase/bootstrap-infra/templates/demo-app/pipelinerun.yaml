@@ -29,6 +29,8 @@ spec:
       value: {{ $repoUrl | quote }}
     - name: revision
       value: main
+    - name: app-subdir
+      value: {{ .Values.gitea.migratedRepo.appSubdir | quote }}
     - name: image-url
       value: {{ $imageRef | quote }}
     - name: buildconfig-name

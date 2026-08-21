@@ -437,11 +437,18 @@ gitea:
     emailDomain: showcase.local
 
   # Gitea operator CR has no concept of Organizations or per-repo branch/subdir
-  # selection — this repo migrates directly under gitea.user.username's own
-  # account (e.g. http://gitea.<ns>.svc:3000/<username>/sample-service.git).
-  sampleService:
-    repoUrl: "https://github.com/juliaaano/tssc-showcase-sample-service.git"
-    repoName: sample-service
+  # selection (giteaRepositoriesList only takes a full clone URL) — so with
+  # sample-service now living at examples/tssc-platform-showcase/sample-service
+  # inside this same monorepo, migrating it means migrating the WHOLE
+  # rhdp-gitops-patterns repo into Gitea (a deliberate, accepted tradeoff).
+  # It lands under gitea.user.username's own account
+  # (e.g. http://gitea.<ns>.svc:3000/<username>/rhdp-gitops-patterns.git).
+  # The demo-app Pipeline's clone step uses SPARSE_CHECKOUT_DIRECTORIES to
+  # scope the actual checked-out content to appSubdir only.
+  migratedRepo:
+    repoUrl: "https://github.com/rhpds/rhdp-gitops-patterns.git"
+    repoName: rhdp-gitops-patterns
+    appSubdir: examples/tssc-platform-showcase/sample-service
 
   operator:
     enabled: true

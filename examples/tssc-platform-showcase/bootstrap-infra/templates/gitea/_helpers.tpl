@@ -25,10 +25,11 @@ https://{{ include "gitea.routeHost" . }}
 {{- end -}}
 
 {{/*
-External clone URL for the sample-service repo once migrated by the operator
-(repos land directly under the created user's own account — this CR has no
-concept of Gitea Organizations).
+External clone URL for the migrated repo (the whole rhdp-gitops-patterns
+monorepo — see values.yaml gitea.migratedRepo comment for why) once migrated
+by the operator (repos land directly under the created user's own account —
+this CR has no concept of Gitea Organizations).
 */}}
-{{- define "gitea.sampleServiceCloneUrl" -}}
-{{ include "gitea.url" . }}/{{ .Values.gitea.user.username }}/{{ .Values.gitea.sampleService.repoName }}.git
+{{- define "gitea.migratedRepoCloneUrl" -}}
+{{ include "gitea.url" . }}/{{ .Values.gitea.user.username }}/{{ .Values.gitea.migratedRepo.repoName }}.git
 {{- end -}}
