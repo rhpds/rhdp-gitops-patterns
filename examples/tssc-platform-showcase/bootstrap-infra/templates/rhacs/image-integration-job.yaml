@@ -1,0 +1,185 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled .Values.rhacs.imageIntegrationJob.enabled }}
+{{- $endpoint := include "rhacs.centralEndpoint" . }}
+---
+# One-time Job: register the in-cluster OpenShift image registry as a Central
+# "Image Integration" via the REST API. Without this, Central has no
+# credentials to pull manifests from image-registry.openshift-image-
+# registry.svc:5000, and `roxctl image check` fails outright with "no
+# matching image registries found" instead of evaluating policy — confirmed
+# live against this exact cluster's acs-image-check Task run.
+#
+# Runs at wave 207 (demo-app band), not alongside ci-token-job/policy-import-
+# job at wave 105/106, because the credential it uses to authenticate TO the
+# registry (not to Central) is its own pod's default projected ServiceAccount
+# token, which only has pull rights once the system:image-puller RoleBinding
+# in templates/rhacs/image-integration-rbac.yaml exists — and that RoleBinding
+# targets demoApp.namespace (showcase-app), which isn't created until wave 200.
+#
+# Authenticates to CENTRAL the same way ci-token-job does (admin basic auth
+# via Secret central-htpasswd) rather than via the rox-api-token from Secret
+# {{ .Values.rhacs.pipelineHooks.secretName }} — confirmed live that the "CI"
+# role behind that token lacks READ_WRITE_ACCESS on the "Integration" resource
+# (POST /v1/imageintegrations returns 403 not-authorized with it).
+#
+# Every branch below is intentionally non-fatal (exits 0) — this is
+# convenience automation, not a platform-health gate, and must never block
+# the bootstrap sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.rhacs.imageIntegrationJob.jobName }}
+  namespace: {{ .Values.rhacs.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: image-integration
+  annotations:
+    argocd.argoproj.io/sync-wave: "207"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: {{ .Values.rhacs.imageIntegrationJob.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.rhacs.imageIntegrationJob.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "rhacs.labels" . | nindent 8 }}
+        app.kubernetes.io/component: image-integration
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+      containers:
+        - name: register-integration
+          image: {{ .Values.rhacs.pipelineHooks.ciTokenJob.image | quote }}
+          imagePullPolicy: {{ .Values.rhacs.pipelineHooks.ciTokenJob.imagePullPolicy | quote }}
+          env:
+            - name: NAMESPACE
+              value: {{ .Values.rhacs.namespace | quote }}
+            - name: FALLBACK_ENDPOINT
+              value: {{ $endpoint | quote }}
+            - name: INTEGRATION_NAME
+              value: {{ .Values.rhacs.imageIntegrationJob.integrationName | quote }}
+            - name: REGISTRY_ENDPOINT
+              value: "image-registry.openshift-image-registry.svc:5000"
+            - name: WAIT_SECONDS
+              value: {{ .Values.rhacs.imageIntegrationJob.waitSeconds | quote }}
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              #!/usr/bin/env bash
+              set -uo pipefail
+              if ! command -v oc >/dev/null 2>&1; then
+                curl -fsSL -o /tmp/oc.tgz \
+                  https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz
+                tar -C /usr/local/bin -xzf /tmp/oc.tgz oc
+              fi
+              if ! command -v python3 >/dev/null 2>&1; then
+                dnf install -y -q python3 && dnf clean all
+              fi
+
+              echo "Waiting for Central Route + central-htpasswd (up to ${WAIT_SECONDS}s)..."
+              deadline=$((SECONDS + WAIT_SECONDS))
+              CENTRAL_HOST=""
+              while (( SECONDS < deadline )); do
+                CENTRAL_HOST="$(oc -n "${NAMESPACE}" get route central -o jsonpath='{.spec.host}' 2>/dev/null || true)"
+                if [[ -n "${CENTRAL_HOST}" ]] && oc -n "${NAMESPACE}" get secret central-htpasswd >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 10
+              done
+              if [[ -z "${CENTRAL_HOST}" ]] || ! oc -n "${NAMESPACE}" get secret central-htpasswd >/dev/null 2>&1; then
+                echo "WARN: Central not ready — skipping image integration registration (non-fatal)."
+                exit 0
+              fi
+
+              ENDPOINT="${CENTRAL_HOST}:443"
+              if [[ -z "${ENDPOINT}" || "${ENDPOINT}" == ":443" ]]; then
+                ENDPOINT="${FALLBACK_ENDPOINT}"
+              fi
+              ADMIN_PASS="$(oc -n "${NAMESPACE}" get secret central-htpasswd -o jsonpath='{.data.password}' | base64 -d)"
+
+              # This pod's own projected ServiceAccount token doubles as a valid
+              # OpenShift internal-registry pull credential (same mechanism
+              # in-cluster builds/pulls use) as long as this SA has
+              # system:image-puller in demoApp.namespace — see
+              # templates/rhacs/image-integration-rbac.yaml. No TokenRequest
+              # API access needed.
+              REGISTRY_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+              export REGISTRY_TOKEN
+
+              echo "Checking for existing image integration '${INTEGRATION_NAME}' on ${ENDPOINT}..."
+              EXISTING_ID="$(curl -sk -u "admin:${ADMIN_PASS}" "https://${ENDPOINT}/v1/imageintegrations" | python3 -c '
+              import json, os, sys
+              name = os.environ.get("INTEGRATION_NAME", "").strip().lower()
+              try:
+                  data = json.load(sys.stdin)
+              except Exception:
+                  data = {}
+              for i in data.get("integrations", []):
+                  if i.get("name", "").strip().lower() == name:
+                      print(i.get("id", ""))
+                      break
+              ')"
+
+              if [[ -n "${EXISTING_ID}" ]]; then
+                export EXISTING_ID
+                echo "Image integration '${INTEGRATION_NAME}' already exists (id=${EXISTING_ID}) — patching credentials (token rotates each run)."
+                BODY="$(python3 -c '
+              import json, os
+              print(json.dumps({
+                  "id": os.environ["EXISTING_ID"],
+                  "name": os.environ["INTEGRATION_NAME"],
+                  "type": "docker",
+                  "categories": ["REGISTRY"],
+                  "docker": {
+                      "endpoint": os.environ["REGISTRY_ENDPOINT"],
+                      "username": "serviceaccount",
+                      "password": os.environ["REGISTRY_TOKEN"],
+                      "insecure": True,
+                  },
+              }))
+              ')"
+                HTTP_CODE="$(curl -sk -o /tmp/put-response.json -w '%{http_code}' \
+                  -u "admin:${ADMIN_PASS}" \
+                  -X PUT -H 'Content-Type: application/json' \
+                  -d "${BODY}" \
+                  "https://${ENDPOINT}/v1/imageintegrations/${EXISTING_ID}?updatePassword=true")"
+                if [[ "${HTTP_CODE}" == "200" ]]; then
+                  echo "Updated image integration '${INTEGRATION_NAME}' (id=${EXISTING_ID})."
+                else
+                  echo "WARN: PUT /v1/imageintegrations/${EXISTING_ID} returned HTTP ${HTTP_CODE} (non-fatal):"
+                  cat /tmp/put-response.json || true
+                fi
+                exit 0
+              fi
+
+              BODY="$(python3 -c '
+              import json, os
+              print(json.dumps({
+                  "name": os.environ["INTEGRATION_NAME"],
+                  "type": "docker",
+                  "categories": ["REGISTRY"],
+                  "docker": {
+                      "endpoint": os.environ["REGISTRY_ENDPOINT"],
+                      "username": "serviceaccount",
+                      "password": os.environ["REGISTRY_TOKEN"],
+                      "insecure": True,
+                  },
+                  "skipTestIntegration": False,
+              }))
+              ')"
+
+              HTTP_CODE="$(curl -sk -o /tmp/post-response.json -w '%{http_code}' \
+                -u "admin:${ADMIN_PASS}" \
+                -X POST -H 'Content-Type: application/json' \
+                -d "${BODY}" \
+                "https://${ENDPOINT}/v1/imageintegrations")"
+
+              if [[ "${HTTP_CODE}" == "200" || "${HTTP_CODE}" == "201" ]]; then
+                echo "Registered image integration '${INTEGRATION_NAME}' for ${REGISTRY_ENDPOINT}."
+              else
+                echo "WARN: POST /v1/imageintegrations returned HTTP ${HTTP_CODE} (non-fatal):"
+                cat /tmp/post-response.json || true
+              fi
+              exit 0
+{{- end }}

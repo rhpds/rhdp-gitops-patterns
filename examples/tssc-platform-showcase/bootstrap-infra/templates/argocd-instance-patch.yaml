@@ -203,9 +203,19 @@ spec:
     - group: rhdh.redhat.com
       kind: Backstage
       check: |
+        -- NOTE: unlike Central/SecuredCluster/TrustedProfileAnalyzer above, the
+        -- Backstage CRD only ever surfaces a single "Deployed" condition type
+        -- (confirmed against the live CRD) — there is no dedicated
+        -- ReleaseFailed/Irreconcilable-style condition to key a Degraded state
+        -- off of. An earlier version of this check tried to infer failure by
+        -- substring-matching condition.reason for "Failed" via string.find /
+        -- reason:find, but this ArgoCD's Lua health-check sandbox does not
+        -- expose the string library at all (confirmed live: both call styles
+        -- fail identically with "attempt to index a non-table object(nil) with
+        -- key 'find'") — so this mirrors the simpler Healthy/Progressing-only
+        -- pattern already used by the Securesign check below instead.
         hs = {}
         local deployed = false
-        local deployedFailed = false
         local message = ""
         if obj.status ~= nil and obj.status.conditions ~= nil then
           for i, condition in ipairs(obj.status.conditions) do
@@ -213,16 +223,9 @@ spec:
               message = condition.message
               if condition.status == "True" then
                 deployed = true
-              elseif condition.reason ~= nil and string.find(condition.reason, "Failed") ~= nil then
-                deployedFailed = true
               end
             end
           end
-        end
-        if deployedFailed then
-          hs.status = "Degraded"
-          hs.message = message
-          return hs
         end
         if deployed then
           hs.status = "Healthy"

@@ -41,6 +41,10 @@ spec:
       value: {{ $rekorUrl | quote }}
     - name: cosign-tuf-url
       value: {{ $tufUrl | quote }}
+    - name: rox-secret-name
+      value: {{ .Values.rhacs.pipelineHooks.secretName | quote }}
+    - name: rox-secret-source-namespace
+      value: {{ .Values.rhacs.namespace | quote }}
   workspaces:
     - name: source
       volumeClaimTemplate:

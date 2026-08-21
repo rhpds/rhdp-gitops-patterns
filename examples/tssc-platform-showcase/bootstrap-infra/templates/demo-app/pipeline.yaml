@@ -44,6 +44,15 @@ spec:
       type: string
       default: ""
       description: TUF root/mirror URL from RHTAS
+    - name: rox-secret-name
+      type: string
+      default: {{ .Values.rhacs.pipelineHooks.secretName | quote }}
+    - name: rox-secret-source-namespace
+      type: string
+      default: {{ .Values.rhacs.namespace | quote }}
+      description: >-
+        Namespace where the RHACS ci-token-mint Job creates rox-secret-name
+        (see acs-image-check comment below for why it must be mirrored here).
   workspaces:
     - name: source
     - name: sbom
@@ -124,8 +133,19 @@ spec:
 
     # OpenShift Binary BuildConfig (Dockerfile) — triggered directly from the
     # git-cloned workspace via --from-dir, regardless of the BuildConfig's own
-    # configured Git source (see buildconfig.yaml header comment). Builds from
-    # the app-subdir within the cloned monorepo workspace, not the workspace root.
+    # configured Git source (see buildconfig.yaml header comment).
+    #
+    # IMPORTANT: --from-dir must point at the WORKSPACE ROOT, not the
+    # app-subdir. git sparse-checkout does not flatten the checked-out tree —
+    # it preserves each file's original repo-relative path and just prunes
+    # everything outside the requested directories. So after the clone step's
+    # SPARSE_CHECKOUT_DIRECTORIES, the workspace root already contains
+    # <app-subdir>/Dockerfile at its normal nested path, and the BuildConfig's
+    # own contextDir (buildconfig.yaml, set to the same app-subdir) is what
+    # narrows the uploaded root down to it. Pointing --from-dir at the
+    # app-subdir directly double-applies that path (uploaded root would BE the
+    # subdir, then contextDir looks for <app-subdir> again inside it) and
+    # fails with "provided context directory does not exist" — confirmed live.
     - name: openshift-build
       runAfter: [clone]
       workspaces:
@@ -134,13 +154,9 @@ spec:
       params:
         - name: buildconfig-name
           value: $(params.buildconfig-name)
-        - name: app-subdir
-          value: $(params.app-subdir)
       taskSpec:
         params:
           - name: buildconfig-name
-            type: string
-          - name: app-subdir
             type: string
         workspaces:
           - name: source
@@ -151,13 +167,64 @@ spec:
               #!/usr/bin/env bash
               set -euo pipefail
               BC="$(params.buildconfig-name)"
-              SRC="$(workspaces.source.path)/$(params.app-subdir)"
-              echo "Starting Binary build ${BC} from ${SRC}"
+              SRC="$(workspaces.source.path)"
+              echo "Starting Binary build ${BC} from ${SRC} (BuildConfig contextDir narrows to the app subdir)"
               oc start-build "${BC}" --from-dir="${SRC}" --follow --wait
               echo "Build ${BC} finished"
 
-    - name: acs-image-check
+    # RHACS' ci-token-mint Job (templates/rhacs/ci-token-job.yaml) creates
+    # Secret rox-secret-name in rox-secret-source-namespace (stackrox) — but
+    # Tekton always runs a Task's TaskRun pod in the PipelineRun's OWN
+    # namespace (showcase-app here), never in the namespace where the Task
+    # object is merely defined, and a plain `secret:` volume can only
+    # reference a Secret that exists in the pod's own namespace. Confirmed
+    # live: acs-image-check's `optional: true` secret volume silently mounted
+    # an empty directory (no error) because rhacs-ci-secrets only existed in
+    # stackrox, not showcase-app, so the Task kept soft-skipping with "missing
+    # rox-api-endpoint" even though the Secret genuinely existed elsewhere.
+    # Mirror it into this namespace first using the "pipeline" ServiceAccount,
+    # which already has `edit` here (serviceaccount-rbac.yaml) plus a
+    # narrowly-scoped read-only RoleBinding into stackrox for just this one
+    # Secret (templates/rhacs/ci-token-rbac.yaml).
+    - name: mirror-rhacs-secret
       runAfter: [openshift-build]
+      params:
+        - name: rox-secret-name
+          value: $(params.rox-secret-name)
+        - name: rox-secret-source-namespace
+          value: $(params.rox-secret-source-namespace)
+      taskSpec:
+        params:
+          - name: rox-secret-name
+            type: string
+          - name: rox-secret-source-namespace
+            type: string
+        steps:
+          - name: mirror
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              SRC_NS="$(params.rox-secret-source-namespace)"
+              NAME="$(params.rox-secret-name)"
+              if ! oc get secret "${NAME}" -n "${SRC_NS}" >/dev/null 2>&1; then
+                echo "Secret ${SRC_NS}/${NAME} not found yet — leaving acs-image-check to soft-skip."
+                exit 0
+              fi
+              ENDPOINT="$(oc get secret "${NAME}" -n "${SRC_NS}" -o jsonpath='{.data.rox-api-endpoint}' | base64 -d)"
+              TOKEN="$(oc get secret "${NAME}" -n "${SRC_NS}" -o jsonpath='{.data.rox-api-token}' | base64 -d)"
+              if oc get secret "${NAME}" >/dev/null 2>&1; then
+                oc patch secret "${NAME}" --type merge \
+                  -p "{\"stringData\":{\"rox-api-endpoint\":\"${ENDPOINT}\",\"rox-api-token\":\"${TOKEN}\"}}"
+              else
+                oc create secret generic "${NAME}" \
+                  --from-literal=rox-api-endpoint="${ENDPOINT}" \
+                  --from-literal=rox-api-token="${TOKEN}"
+              fi
+              echo "Mirrored Secret ${SRC_NS}/${NAME} into this namespace for acs-image-check."
+
+    - name: acs-image-check
+      runAfter: [mirror-rhacs-secret]
       taskRef:
         resolver: cluster
         params:

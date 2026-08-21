@@ -1,0 +1,38 @@
+{{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled .Values.rhacs.imageIntegrationJob.enabled }}
+---
+# Grants the (already-existing) rhacs-ci-token ServiceAccount pull access to
+# images in demoApp.namespace, so templates/rhacs/image-integration-job.yaml
+# (which reuses that SA — it already has the Route/Secret read RBAC in
+# ci-token-rbac.yaml this Job also needs to reach Central) can use that pod's
+# own default projected ServiceAccount token (no TokenRequest API calls
+# needed — every pod gets one automatically at
+# /var/run/secrets/kubernetes.io/serviceaccount/token) as the password when
+# registering image-registry.openshift-image-registry.svc:5000 as a Central
+# Image Integration. Without a registered integration, Central has no
+# credentials to pull manifests from the internal registry at all, and the
+# demo-app Pipeline's acs-image-check Task fails outright with "no matching
+# image registries found" instead of evaluating policy (confirmed live).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rhacs-ci-token-image-puller
+  namespace: {{ .Values.demoApp.namespace }}
+  labels:
+    {{- include "rhacs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: image-integration
+  annotations:
+    # Must be >= 200 (demoApp.namespace / showcase-app is created at wave 200)
+    # even though the Job that consumes this RoleBinding runs at wave 207 too
+    # — using the same wave for both is fine since neither depends on the
+    # other's exact creation order within the wave, only that both land after
+    # wave 200.
+    argocd.argoproj.io/sync-wave: "207"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-puller
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
+    namespace: {{ .Values.rhacs.namespace }}
+{{- end }}
