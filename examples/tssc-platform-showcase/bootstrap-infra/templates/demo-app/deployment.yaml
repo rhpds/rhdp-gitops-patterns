@@ -1,16 +1,7 @@
 {{- if .Values.demoApp.enabled }}
 {{- $imageRef := include "demoApp.imageRef" . }}
 ---
-# Scheduled AFTER the PipelineRun's sync-wave (210) on purpose: ArgoCD's sync-wave
-# algorithm blocks progression to the next wave until every resource in the
-# current wave reports Healthy. A Deployment has a real health check, so placing
-# it at a wave BEFORE the PipelineRun that builds its image creates a permanent
-# deadlock (the Deployment can never go healthy without the image the PipelineRun
-# builds, and the PipelineRun can never be created because ArgoCD won't advance
-# past the unhealthy Deployment's wave). PipelineRun/Task/Pipeline have no
-# ArgoCD health check, so wave 210 never blocks; placing the Deployment at 211
-# lets it apply right after, and the image.openshift.io/triggers annotation then
-# rolls it automatically once the ImageStream tag lands from the build.
+# GOTCHA: wave 211 after PipelineRun (210). Earlier wave deadlocks: Deployment never Healthy without the image, ArgoCD won't advance.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,6 +12,10 @@ metadata:
     app: sample-service
   annotations:
     argocd.argoproj.io/sync-wave: "211"
+    # GOTCHA: ImageStream trigger rewrites the image to a digest; ignore so the app stays Synced.
+    argocd.argoproj.io/ignore-differences: |
+      jsonPointers:
+        - /spec/template/spec/containers/0/image
     image.openshift.io/triggers: >-
       [{"from":{"kind":"ImageStreamTag","name":"sample-service:latest"},"fieldPath":"spec.template.spec.containers[0].image"}]
 spec:

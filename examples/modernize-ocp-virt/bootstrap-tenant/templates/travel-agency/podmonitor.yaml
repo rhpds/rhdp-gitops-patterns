@@ -3,6 +3,9 @@ kind: PodMonitor
 metadata:
   name: {{ .Values.username }}-proxies-monitor-travel-agency
   namespace: {{ .Values.username }}-travel-agency
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   selector:
     matchExpressions:

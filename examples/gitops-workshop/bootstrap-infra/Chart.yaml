@@ -1,6 +1,5 @@
-# Example generated and validated by gitops-helper test harness
 apiVersion: v2
 name: bootstrap-infra
-description: Cluster-scoped shared infrastructure for the GitOps Workshop
+description: "COPY WHEN: Gitea CreateUsers + sample-repo Job (Ansible-in-Job). Pair with this example's tenant chart for per-user ArgoCD. NOT FOR: Gitea operator install (use gitea-devspaces), DevSpaces."
 type: application
 version: 0.1.0

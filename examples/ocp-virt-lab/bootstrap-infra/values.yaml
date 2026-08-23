@@ -1,21 +1,22 @@
+# PURPOSE: CNV operator + HyperConverged + simple per-user VirtualMachine. NOT FOR: Gitea, GitLab, multi-VM travel app (modernize-ocp-virt).
 # Auto-injected by the deployer. Do not pass these manually.
 deployer:
   domain: apps.cluster.example.com
   apiUrl: https://api.cluster.example.com:6443
   guid: xxxxx
 
-# OpenShift Virtualization (CNV) operator
-cnv:
-  channel: stable
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
-  namespace: openshift-cnv
-
-# Gitea operator
-gitea:
-  namespace: gitea
-
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 # tenantLifecycle:
 #   namespace: tenant-lifecycle
+
+# Pinned snapshot. Re-verify per target OCP version at generation time.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
+# CNV operator: copy from this example. Multi-VM travel app: modernize-ocp-virt.
+cnv:
+  channel: stable
+  source: rhpds-redhat-operators
+  sourceNamespace: openshift-marketplace
+  namespace: openshift-cnv

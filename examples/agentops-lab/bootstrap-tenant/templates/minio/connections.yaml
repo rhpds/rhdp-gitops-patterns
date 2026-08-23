@@ -1,7 +1,4 @@
-# One Secret per bucket, shaped as an RHOAI dashboard "Data Connection"
-# (opendatahub.io/connection-type + dashboard labels) so it shows up in the
-# tenant's Data Science Project. DSPA's
-# objectStorage.externalStorage.s3CredentialsSecret references "pipeline" by name.
+# RHOAI Data Connection Secrets (opendatahub.io/connection-type). DSPA references secret "pipeline".
 {{- range $bucket := .Values.minio.buckets }}
 ---
 apiVersion: v1

@@ -1,6 +1,5 @@
-# Example generated and validated by gitops-helper test harness
 apiVersion: v2
 name: bootstrap-tenant
-description: Per-user tenant environment for an RHDP lab
+description: "COPY WHEN: Service Mesh/Istio + Kiali + VirtualService + frontend/backend. Web Terminal operator is in bootstrap-infra. NOT FOR: Istio Gateway (modernize-ocp-virt), GitLab/DevHub (ai-app-dev)."
 type: application
 version: 0.1.0

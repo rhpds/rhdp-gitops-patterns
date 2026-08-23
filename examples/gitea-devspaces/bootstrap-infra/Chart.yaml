@@ -1,6 +1,5 @@
-# Example generated and validated by gitops-helper test harness
 apiVersion: v2
 name: bootstrap-infra
-description: Cluster-scoped shared infrastructure for an RHDP lab environment
+description: "COPY WHEN: Gitea operator (CatalogSource+Subscription in openshift-operators, no OperatorGroup) + shared Gitea CR + DevSpaces CheCluster. NOT FOR: per-user Gitea, repo-migrate GOTCHAs, OpenVSX, per-user ArgoCD."
 type: application
 version: 0.1.0

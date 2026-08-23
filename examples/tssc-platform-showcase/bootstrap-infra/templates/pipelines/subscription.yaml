@@ -2,9 +2,7 @@
 {{- $existingSub := lookup "operators.coreos.com/v1alpha1" "Subscription" .Values.pipelines.operator.namespace .Values.pipelines.operator.name }}
 {{- if not $existingSub.metadata }}
 ---
-# OpenShift Pipelines Operator via OLM — Tekton prerequisite for the demo-app
-# build+scan+sign PipelineRun and the RHACS Tekton Tasks.
-# Installs into openshift-operators (AllNamespaces). Skipped if Subscription exists.
+# OpenShift Pipelines in openshift-operators (AllNamespaces). Skipped if Subscription exists.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

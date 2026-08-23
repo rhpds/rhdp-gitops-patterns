@@ -1,11 +1,6 @@
 {{- if and .Values.rhdh.enabled .Values.rhdh.catalog.enabled }}
 ---
-# Static catalog entry for the platform's one reference application. No scaffolder,
-# no software templates, no per-user catalog registration flow — this Component
-# mirrors the catalog-info.yaml that already lives at
-# examples/tssc-platform-showcase/sample-service in this same monorepo, so the
-# RHDH catalog has something to show on first sync without waiting on the
-# demo-app PipelineRun or any Backstage scaffolder action.
+# GOTCHA: static Component (no scaffolder). Mirrors sample-service/catalog-info.yaml.
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,4 +1,5 @@
 {{- if .Values.openvsx.enabled }}
+# GOTCHA: Inserts openvsx.pat into postgres before ovsx publish. NODE_TLS_REJECT_UNAUTHORIZED=0 because the OpenVSX Route uses the cluster's self-signed cert.
 apiVersion: batch/v1
 kind: Job
 metadata:

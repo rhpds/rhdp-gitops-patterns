@@ -6,6 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
+  host: gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}
   port:
     targetPort: http
   tls:

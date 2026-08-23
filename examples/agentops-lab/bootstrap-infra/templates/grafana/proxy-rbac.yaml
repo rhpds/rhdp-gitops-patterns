@@ -1,6 +1,4 @@
-# Grants "grafana-sa" (auto-created by the Grafana CR, not created here) two
-# things: token/SAR review for the oauth-proxy sidecar, and cluster-monitoring-view
-# for the thanos-querier datasource.
+# grafana-sa is created by the Grafana CR, not here. Token/SAR for oauth-proxy + cluster-monitoring-view for thanos-querier.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -45,8 +43,7 @@ subjects:
     name: grafana-sa
     namespace: {{ .Values.grafana.namespace }}
 ---
-# Known grafana-operator bug workaround: without this, the operator's own SA
-# can't remove finalizers it adds to secrets/CRs, which can wedge deletes.
+# GOTCHA: grafana-operator cannot remove its own secret/CR finalizers without this extra ClusterRole.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

@@ -1,4 +1,4 @@
-# Per-user ArgoCD instance for the GitOps Workshop
+# COPY WHEN generating per-user ArgoCD. Do not use cluster openshift-gitops for student access.
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:

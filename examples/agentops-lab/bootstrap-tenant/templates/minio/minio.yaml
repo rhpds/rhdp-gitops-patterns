@@ -1,6 +1,4 @@
-# Backs the DSPA's object storage (see pipelines/dspa.yaml). Root user is
-# derived from the tenant username so credentials don't collide across
-# tenants without needing a per-tenant generated secret.
+# Per-tenant object storage for DSPA. Root user = tenant username.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

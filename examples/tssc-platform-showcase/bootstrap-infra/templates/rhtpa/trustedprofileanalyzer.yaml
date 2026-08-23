@@ -2,8 +2,7 @@
 {{- $issuer := include "rhtpa.oidcIssuer" . }}
 {{- $appDomain := include "rhtpa.appDomain" . }}
 ---
-# TrustedProfileAnalyzer CR — SBOM (CycloneDX) + VEX/advisory ingestion (Trustify / RHTPA).
-# Reuse: RHADS / build-secured-dev-workflows tpa-instance pattern.
+# TrustedProfileAnalyzer CR — SBOM (CycloneDX) + VEX/advisory ingestion.
 apiVersion: {{ .Values.rhtpa.apiVersion }}
 kind: TrustedProfileAnalyzer
 metadata:

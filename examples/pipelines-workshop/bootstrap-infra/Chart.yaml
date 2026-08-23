@@ -1,6 +1,5 @@
-# Example generated and validated by gitops-helper test harness
 apiVersion: v2
 name: bootstrap-infra
-description: Cluster-scoped shared infrastructure for an RHDP lab environment
+description: "COPY WHEN: OpenShift Pipelines operator + Pipeline + PipelineRun + workspace PVC. NOT FOR: Knative (serverless-workshop), other operators."
 type: application
 version: 0.1.0

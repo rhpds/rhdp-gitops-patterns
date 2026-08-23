@@ -1,6 +1,4 @@
-# Clone URLs into the in-cluster Gitea mirror (bootstrap-infra/templates/gitea) of the
-# upstream repos, so learners can clone in-cluster instead of live GitHub. Host and
-# owner path verified against a live deploy — see the gitea values.yaml comment.
+# Clone URLs for the in-cluster Gitea mirror. Host is <CR name>-<namespace>.<domain>.
 apiVersion: v1
 kind: ConfigMap
 metadata:

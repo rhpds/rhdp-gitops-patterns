@@ -1,6 +1,4 @@
-# oauth-proxy sidecar gates the route behind OpenShift login instead of
-# admin/password. spec.route makes the operator create/manage the Route —
-# don't also create a standalone Route resource for it.
+# GOTCHA: spec.route creates the Route — do not also create a standalone Route. oauth-proxy sidecar uses OpenShift login.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:

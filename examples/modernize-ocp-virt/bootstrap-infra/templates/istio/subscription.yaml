@@ -1,0 +1,17 @@
+# OSSM 3 / Sail provides GatewayClass "istio" for gateway.networking.k8s.io Gateway.
+# GOTCHA: wait-rhpds-catalog (wave -3 Sync hook) must succeed before this wave so
+# rhpds-redhat-operators is READY. ResolutionFailed Degrades the Subscription and
+# blocks Istio/Gateway (wave 1) until retries are exhausted.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: servicemeshoperator3
+  namespace: openshift-operators
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  channel: {{ .Values.servicemesh.channel }}
+  installPlanApproval: Automatic
+  name: servicemeshoperator3
+  source: {{ .Values.servicemesh.source }}
+  sourceNamespace: {{ .Values.servicemesh.sourceNamespace }}

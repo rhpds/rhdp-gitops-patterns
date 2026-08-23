@@ -1,7 +1,7 @@
-# community-operators, not redhat-operators, so not covered by
-# verify_operator_channel.py. Installs into openshift-operators (AllNamespaces
-# mode, cluster's existing global OperatorGroup — same shape as the Gitea
-# quirk in gitops-patterns.md) — no dedicated OperatorGroup here.
+# community-operators, not redhat-operators. AllNamespaces in openshift-operators — no OperatorGroup.
+# GOTCHA: OLM queries every CatalogSource during resolution. wait-rhpds-catalog (wave -3
+# Sync hook) must succeed before this wave so grafana.source and rhoai.source are READY.
+# ResolutionFailed never retries and blocks every later wave.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

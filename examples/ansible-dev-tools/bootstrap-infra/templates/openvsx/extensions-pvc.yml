@@ -1,4 +1,5 @@
 {{- if .Values.openvsx.enabled }}
+# GOTCHA: Same sync-wave as the openvsx-server Deployment.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

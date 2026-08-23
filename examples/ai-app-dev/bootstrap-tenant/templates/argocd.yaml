@@ -4,6 +4,9 @@ kind: ArgoCD
 metadata:
   name: argocd
   namespace: "{{ .Values.username }}-{{ .Values.namespaceSuffix }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   sso:
     dex:

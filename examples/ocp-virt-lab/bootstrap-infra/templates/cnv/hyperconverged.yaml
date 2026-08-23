@@ -1,3 +1,5 @@
+# CRD comes from CNV operator; SkipDryRunOnMissingResource required.
+# CNV operator: copy from this example. Multi-VM travel app: modernize-ocp-virt.
 apiVersion: hco.kubevirt.io/v1beta1
 kind: HyperConverged
 metadata:

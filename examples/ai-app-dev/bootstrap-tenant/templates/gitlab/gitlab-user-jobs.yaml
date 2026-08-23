@@ -4,8 +4,7 @@ metadata:
   name: create-gitlab-user
   namespace: "{{ .Values.username }}-{{ .Values.namespaceSuffix }}"
   annotations:
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   template:
     spec:
@@ -25,4 +24,4 @@ spec:
           configMap:
             name: cm-gitlab-create-user
       restartPolicy: Never
-  backoffLimit: 3
+  backoffLimit: 100

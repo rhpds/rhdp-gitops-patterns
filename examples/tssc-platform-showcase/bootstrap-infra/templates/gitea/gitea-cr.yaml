@@ -1,19 +1,7 @@
 {{- if .Values.gitea.enabled }}
 {{- $host := include "gitea.routeHost" . }}
 ---
-# Gitea CR (pfe.rhpds.com/v1) — operator-managed Gitea instead of a hand-rolled
-# Deployment/PVC/seed-Job. The operator provisions the instance, creates one
-# non-admin user, and migrates a repo directly into that user's account in a
-# single declarative apply — no seed script, no assemble/overlay/patch
-# machinery. This CR has no concept of Organizations or per-repo branch/subdir
-# selection, so sample-service living at
-# examples/tssc-platform-showcase/sample-service inside this same monorepo
-# means migrating the WHOLE rhdp-gitops-patterns repo (a deliberate, accepted
-# tradeoff — see values.yaml gitea.migratedRepo). It lands at
-# {{ include "gitea.migratedRepoCloneUrl" . }} (external) /
-# gitea.{{ .Values.gitea.namespace }}.svc:3000/{{ .Values.gitea.user.username }}/{{ .Values.gitea.migratedRepo.repoName }}.git (in-cluster).
-# The demo-app Pipeline's clone step scopes the actual checked-out content to
-# gitea.migratedRepo.appSubdir via SPARSE_CHECKOUT_DIRECTORIES.
+# GOTCHA: operator cannot select a subdir; migratedRepo clones the whole rhdp-gitops-patterns repo. Pipeline sparse-checkouts appSubdir.
 apiVersion: pfe.rhpds.com/v1
 kind: Gitea
 metadata:

@@ -1,14 +1,17 @@
-# Pinned redhat-operators snapshot. Shared by every redhat-operators Subscription in
-# this chart — one CatalogSource per lab, not per operator.
+# One CatalogSource for every redhat-operators Subscription in this chart.
+# GOTCHA: OLM resolves gitea-operator (redhat-gpte-gitea) against ALL catalogs. If this
+# CatalogSource is not READY yet, gitea hits ResolutionFailed and never retries (its
+# source catalog did not change). Wave -5 creates it; wait-rhpds-catalog (wave -3 hook)
+# blocks Subscriptions until this catalog and redhat-gpte-gitea are READY.
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: rhpds-redhat-operators
   namespace: openshift-marketplace
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "-5"
 spec:
   sourceType: grpc
-  image: {{ .Values.redhatOperatorsCatalog.image }}
+  image: {{ .Values.catalog.redhatOperatorsImage }}
   displayName: RHPDS Pinned Snapshot (redhat-operators)
   publisher: Red Hat GPTE

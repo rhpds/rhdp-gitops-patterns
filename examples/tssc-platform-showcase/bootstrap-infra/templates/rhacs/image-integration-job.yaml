@@ -1,29 +1,8 @@
 {{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled .Values.rhacs.imageIntegrationJob.enabled }}
 {{- $endpoint := include "rhacs.centralEndpoint" . }}
 ---
-# One-time Job: register the in-cluster OpenShift image registry as a Central
-# "Image Integration" via the REST API. Without this, Central has no
-# credentials to pull manifests from image-registry.openshift-image-
-# registry.svc:5000, and `roxctl image check` fails outright with "no
-# matching image registries found" instead of evaluating policy — confirmed
-# live against this exact cluster's acs-image-check Task run.
-#
-# Runs at wave 207 (demo-app band), not alongside ci-token-job/policy-import-
-# job at wave 105/106, because the credential it uses to authenticate TO the
-# registry (not to Central) is its own pod's default projected ServiceAccount
-# token, which only has pull rights once the system:image-puller RoleBinding
-# in templates/rhacs/image-integration-rbac.yaml exists — and that RoleBinding
-# targets demoApp.namespace (showcase-app), which isn't created until wave 200.
-#
-# Authenticates to CENTRAL the same way ci-token-job does (admin basic auth
-# via Secret central-htpasswd) rather than via the rox-api-token from Secret
-# {{ .Values.rhacs.pipelineHooks.secretName }} — confirmed live that the "CI"
-# role behind that token lacks READ_WRITE_ACCESS on the "Integration" resource
-# (POST /v1/imageintegrations returns 403 not-authorized with it).
-#
-# Every branch below is intentionally non-fatal (exits 0) — this is
-# convenience automation, not a platform-health gate, and must never block
-# the bootstrap sync.
+# GOTCHA: without this, roxctl fails with "no matching image registries". Wave 207 (needs demoApp ns image-puller).
+# Auth to Central is admin basic auth, not the CI token (CI role 403 on Integration). Non-fatal (exit 0).
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -98,12 +77,7 @@ spec:
               fi
               ADMIN_PASS="$(oc -n "${NAMESPACE}" get secret central-htpasswd -o jsonpath='{.data.password}' | base64 -d)"
 
-              # This pod's own projected ServiceAccount token doubles as a valid
-              # OpenShift internal-registry pull credential (same mechanism
-              # in-cluster builds/pulls use) as long as this SA has
-              # system:image-puller in demoApp.namespace — see
-              # templates/rhacs/image-integration-rbac.yaml. No TokenRequest
-              # API access needed.
+              # GOTCHA: this pod's SA token is the registry password; needs system:image-puller in demoApp ns. No TokenRequest API.
               REGISTRY_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
               export REGISTRY_TOKEN
 

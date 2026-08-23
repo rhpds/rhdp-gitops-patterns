@@ -1,5 +1,4 @@
-# Reads the token from grafana-auth-secret (secret.yaml's PostSync Job,
-# wave 2) — must sync after it.
+# GOTCHA: reads grafana-auth-secret from the PostSync Job (wave 2) — this must sync after it.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:

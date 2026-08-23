@@ -1,0 +1,13 @@
+# CRD comes from CNV operator; SkipDryRunOnMissingResource required.
+# CNV operator: copy from examples/ocp-virt-lab.
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: {{ .Values.cnv.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  infra: {}
+  workloads: {}

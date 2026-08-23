@@ -1,6 +1,5 @@
-# Example generated and validated by gitops-helper test harness
 apiVersion: v2
 name: bootstrap-infra
-description: Security demo infrastructure - RHACS, Quay, and OpenShift Pipelines
+description: "COPY WHEN: RHACS Central/SecuredCluster + Quay + vulnerable demo workload. NOT FOR: full TSSC platform (tssc-platform-showcase), Pipelines operator (pipelines-workshop)."
 type: application
 version: 0.1.0

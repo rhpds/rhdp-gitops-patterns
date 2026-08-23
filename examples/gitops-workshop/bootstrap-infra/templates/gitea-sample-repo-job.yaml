@@ -1,5 +1,4 @@
-# Job to create sample Git repo in Gitea with httpd deployment manifests
----
+# Ansible-in-Job / hook pattern: seed Gitea (files/forks) when the CR cannot.
 apiVersion: v1
 kind: ServiceAccount
 metadata:

@@ -48,7 +48,7 @@ subjects:
     name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
     namespace: {{ .Values.rhacs.namespace }}
 ---
-# UBI Job installs oc/python via dnf — needs anyuid (same pattern as other one-time Jobs).
+# GOTCHA: UBI Jobs that dnf-install need anyuid.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -68,19 +68,7 @@ subjects:
     name: {{ .Values.rhacs.pipelineHooks.ciTokenJob.serviceAccountName }}
     namespace: {{ .Values.rhacs.namespace }}
 ---
-# Secret rhacs-ci-secrets is minted here (rhacs.namespace / stackrox) by the Job
-# above, but Tekton always runs a Task's TaskRun pod in the PipelineRun's OWN
-# namespace (demoApp.namespace / showcase-app), never in the namespace where
-# the Task object itself is merely defined — and a plain `secret:` volume can
-# only reference a Secret in the pod's own namespace (confirmed live: with
-# `optional: true` this doesn't error, it just silently mounts an empty dir,
-# which is why acs-image-check Task was soft-skipping with "missing
-# rox-api-endpoint" even though the Secret genuinely existed — just in the
-# wrong namespace for that Task's actual pod). This RoleBinding lets the
-# demo-app Pipeline's "pipeline" ServiceAccount (see
-# templates/demo-app/serviceaccount-rbac.yaml) read (only) this one Secret
-# here so the Pipeline's mirror-rhacs-secret Task can copy it into
-# demoApp.namespace, where the acs-image-check Task's pod actually runs.
+# GOTCHA: CI token Secret is minted in rhacs ns; Tekton TaskRun pods run in demoApp ns — Secret must be mirrored.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

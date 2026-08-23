@@ -1,16 +1,6 @@
 {{- if .Values.demoApp.enabled }}
 ---
-# OpenShift GitOps ships a default resourceExclusions list that excludes
-# tekton.dev TaskRun AND PipelineRun cluster-wide — a sensible default to avoid
-# flooding ArgoCD's watch cache with high-churn execution records. But this
-# chart's whole "the platform's demo image is built/scanned/signed by one real
-# declarative PipelineRun at bootstrap" story needs ArgoCD to actually apply
-# and track that one PipelineRun. spec.resourceExclusions is a plain list
-# (not mergeable per-item), so this patch reproduces the operator's default
-# list verbatim and drops only tekton.dev/PipelineRun from it — TaskRun stays
-# excluded, nothing else changes. Confirmed live: this is the OpenShift GitOps
-# operator's own default (openshift-gitops ArgoCD CR / argocd-cm), not
-# anything set by this chart.
+# GOTCHA: OpenShift GitOps excludes PipelineRun by default. resourceExclusions is not mergeable — this list is the operator default minus PipelineRun (TaskRun stays).
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
@@ -94,15 +84,7 @@ spec:
         - '*'
       kinds:
         - TaskRun
-  # None of the following vendor operator CRDs (RHACS, RHDH, RHTAS, RHTPA,
-  # the Gitea operator) are in ArgoCD's built-in health-check table, so
-  # without these customizations ArgoCD reports health "" (unknown/no-op)
-  # for them forever — the Application can reach top-level Healthy even
-  # while, say, RHDH's Backstage pod is still crash-looping, because an
-  # unassessed resource never counts against aggregate health. Each check
-  # below reads the actual operator-reported status.conditions (verified
-  # live against each operator's real output on this cluster) so these
-  # resources report real Healthy/Progressing/Degraded like everything else.
+  # GOTCHA: RHACS/RHDH/RHTAS/RHTPA/Gitea CRs are not in ArgoCD's built-in health table; without these they stay unknown.
   resourceHealthChecks:
     - group: platform.stackrox.io
       kind: Central
@@ -203,17 +185,7 @@ spec:
     - group: rhdh.redhat.com
       kind: Backstage
       check: |
-        -- NOTE: unlike Central/SecuredCluster/TrustedProfileAnalyzer above, the
-        -- Backstage CRD only ever surfaces a single "Deployed" condition type
-        -- (confirmed against the live CRD) — there is no dedicated
-        -- ReleaseFailed/Irreconcilable-style condition to key a Degraded state
-        -- off of. An earlier version of this check tried to infer failure by
-        -- substring-matching condition.reason for "Failed" via string.find /
-        -- reason:find, but this ArgoCD's Lua health-check sandbox does not
-        -- expose the string library at all (confirmed live: both call styles
-        -- fail identically with "attempt to index a non-table object(nil) with
-        -- key 'find'") — so this mirrors the simpler Healthy/Progressing-only
-        -- pattern already used by the Securesign check below instead.
+        -- GOTCHA: Backstage CRD only has Deployed (no Failed condition). Lua sandbox has no string library.
         hs = {}
         local deployed = false
         local message = ""

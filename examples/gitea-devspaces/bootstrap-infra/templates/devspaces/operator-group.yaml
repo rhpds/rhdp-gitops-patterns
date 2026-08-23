@@ -1,4 +1,4 @@
----
+# Own-namespace operator. OperatorGroup is required (Gitea must NOT have one).
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:

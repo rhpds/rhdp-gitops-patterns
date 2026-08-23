@@ -3,7 +3,7 @@
 {{- $existingSub := lookup "operators.coreos.com/v1alpha1" "Subscription" $opNs .Values.rhtpa.operator.name }}
 {{- if not $existingSub.metadata }}
 ---
-# RHTPA Operator via OLM — namespace-scoped install (RHADS pattern).
+# RHTPA Operator — namespace-scoped install.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

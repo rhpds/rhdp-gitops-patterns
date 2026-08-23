@@ -7,12 +7,14 @@ deployer:
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 
-# OpenShift Pipelines operator configuration
+# GOTCHA: one CatalogSource for every redhat-operators Subscription; re-pin per OCP version.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
 pipelines:
   namespace: openshift-operators
   channel: "pipelines-1.17"
-  source: redhat-operators
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
 
-# Shared infrastructure namespace
 infraNamespace: pipelines-infra

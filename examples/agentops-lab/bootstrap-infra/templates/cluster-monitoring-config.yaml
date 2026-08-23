@@ -1,5 +1,4 @@
-# Must sync before Grafana's datasource (wave 2) so thanos-querier and the
-# user-workload Prometheus have time to come up.
+# Wave -2 so thanos-querier/UWM exist before Grafana datasources.
 {{- with .Values.clusterMonitoringConfig }}
 ---
 apiVersion: v1

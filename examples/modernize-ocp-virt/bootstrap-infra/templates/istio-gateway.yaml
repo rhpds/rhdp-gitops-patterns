@@ -1,9 +1,10 @@
----
+# GOTCHA: shared Istio Gateway lives in istio-gateway; per-user Routes copy from bootstrap-tenant and stay in this same namespace.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: istio-gateway
   annotations:
+    argocd.argoproj.io/sync-wave: "-2"
     openshift.io/description: "Kubernetes Istio Gateway Shared"
     openshift.io/display-name: "Kubernetes Istio Gateway Shared"
 ---
@@ -14,6 +15,8 @@ metadata:
   namespace: istio-gateway
   annotations:
     networking.istio.io/service-type: ClusterIP
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   gatewayClassName: istio
   listeners:

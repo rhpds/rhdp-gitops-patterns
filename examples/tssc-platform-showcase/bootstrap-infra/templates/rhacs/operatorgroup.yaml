@@ -1,6 +1,6 @@
 {{- if and .Values.rhacs.enabled .Values.rhacs.operator.enabled .Values.rhacs.operator.createOperatorGroup }}
 ---
-# Dedicated OperatorGroup for RHACS Operator (AllNamespaces watch).
+# OperatorGroup for RHACS in rhacs-operator ns.
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:

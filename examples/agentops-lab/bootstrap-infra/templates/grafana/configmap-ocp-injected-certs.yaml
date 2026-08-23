@@ -1,5 +1,4 @@
-# Mounted by the oauth-proxy sidecar in grafana-instance.yaml to validate
-# OpenShift's internal CAs.
+# Mounted by the oauth-proxy sidecar to validate OpenShift internal CAs.
 apiVersion: v1
 kind: ConfigMap
 metadata:

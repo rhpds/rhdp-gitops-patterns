@@ -1,3 +1,4 @@
+# Pipelines operator: copy from examples/pipelines-workshop. This Pipeline is the AI-model consumer.
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:

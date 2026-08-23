@@ -25,10 +25,7 @@ https://{{ include "gitea.routeHost" . }}
 {{- end -}}
 
 {{/*
-External clone URL for the migrated repo (the whole rhdp-gitops-patterns
-monorepo — see values.yaml gitea.migratedRepo comment for why) once migrated
-by the operator (repos land directly under the created user's own account —
-this CR has no concept of Gitea Organizations).
+External clone URL for the migrated repo (whole monorepo under gitea.user.username — no Organizations).
 */}}
 {{- define "gitea.migratedRepoCloneUrl" -}}
 {{ include "gitea.url" . }}/{{ .Values.gitea.user.username }}/{{ .Values.gitea.migratedRepo.repoName }}.git

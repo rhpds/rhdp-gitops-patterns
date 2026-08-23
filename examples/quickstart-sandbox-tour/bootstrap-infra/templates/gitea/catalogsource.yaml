@@ -1,14 +1,15 @@
-# Gitea is not in the standard redhat-operators catalog — needs its own RHPDS
-# CatalogSource. See "Known Operator Quirks: Gitea Operator" in gitops-patterns.md.
+# Gitea is not in redhat-operators. Conventional name/namespace; do not relocate.
+# Wave -5 with rhpds-redhat-operators. wait-rhpds-catalog blocks until this CatalogSource
+# is connectionState READY (object presence is not enough).
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: redhat-gpte-gitea
   namespace: openshift-marketplace
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "-5"
 spec:
   sourceType: grpc
-  image: {{ .Values.gitea.catalogImage }}
+  image: quay.io/rhpds/gitea-catalog:latest
   displayName: Red Hat GPTE (Gitea Operator)
   publisher: Red Hat GPTE

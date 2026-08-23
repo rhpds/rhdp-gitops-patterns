@@ -1,5 +1,7 @@
-# Installed in openshift-operators (AllNamespaces mode) — no namespace-scoped
-# OperatorGroup, it would conflict with the operator's AllNamespaces install mode.
+# AllNamespaces: openshift-operators. Do not create an OperatorGroup.
+# GOTCHA: OLM queries every CatalogSource during resolution. wait-rhpds-catalog (wave -3
+# Sync hook) must succeed before this wave so redhat-gpte-gitea and rhoai.source are READY.
+# ResolutionFailed never retries and blocks every later wave.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

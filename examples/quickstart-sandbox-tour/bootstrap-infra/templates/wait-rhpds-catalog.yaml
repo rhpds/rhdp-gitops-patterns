@@ -1,0 +1,83 @@
+# GOTCHA: wave -5 creates CatalogSource objects; ArgoCD does not wait for grpc READY.
+# OLM resolves gitea-operator (redhat-gpte-gitea) and rhods-operator against every
+# catalog; ResolutionFailed never retries. This Job is a Sync hook at wave -3;
+# Subscriptions are regular resources at wave -2, so ArgoCD waits for the Job to
+# succeed before applying them. BeforeHookCreation recreates it each sync so the
+# wait always runs, including the first apply.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wait-rhpds-catalog
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wait-rhpds-catalog
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+rules:
+  - apiGroups: ["operators.coreos.com"]
+    resources: ["catalogsources"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wait-rhpds-catalog
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: wait-rhpds-catalog
+subjects:
+  - kind: ServiceAccount
+    name: wait-rhpds-catalog
+    namespace: openshift-gitops
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wait-rhpds-catalog
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      serviceAccountName: wait-rhpds-catalog
+      restartPolicy: OnFailure
+      containers:
+        - name: wait
+          image: registry.redhat.io/openshift4/ose-cli:v4.14
+          command:
+            - /bin/bash
+            - -c
+            - |
+              catalogs="{{ .Values.rhoai.source }} redhat-gpte-gitea"
+              echo "Waiting for CatalogSources READY: $catalogs"
+              for i in $(seq 1 90); do
+                all_ready=true
+                for cs in $catalogs; do
+                  state=$(oc get catalogsource "$cs" -n openshift-marketplace -o jsonpath='{.status.connectionState.lastObservedState}' 2>/dev/null || true)
+                  echo "attempt $i $cs state=$state"
+                  if [ "$state" != "READY" ]; then
+                    all_ready=false
+                  fi
+                done
+                if [ "$all_ready" = true ]; then
+                  echo "All CatalogSources READY"
+                  exit 0
+                fi
+                sleep 10
+              done
+              echo "ERROR: timed out waiting for CatalogSources READY: $catalogs"
+              exit 1

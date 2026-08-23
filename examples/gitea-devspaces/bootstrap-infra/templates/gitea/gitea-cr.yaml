@@ -1,16 +1,16 @@
----
+# CRD comes from gitea-operator; SkipDryRunOnMissingResource required.
 apiVersion: pfe.rhpds.com/v1
 kind: Gitea
 metadata:
-  name: {{ .Values.gitea.instance.name }}
-  namespace: {{ .Values.gitea.instanceNamespace }}
+  name: {{ .Values.gitea.name }}
+  namespace: {{ .Values.gitea.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  giteaVolumeSize: {{ .Values.gitea.instance.volumeSize }}
-  postgresqlVolumeSize: {{ .Values.gitea.instance.postgresqlVolumeSize }}
-  giteaSsl: {{ .Values.gitea.instance.ssl }}
-  giteaAdminUser: {{ .Values.gitea.instance.adminUser }}
-  giteaAdminPassword: {{ .Values.gitea.instance.adminPassword }}
-  giteaAdminEmail: {{ .Values.gitea.instance.adminEmail }}
+  giteaVolumeSize: {{ .Values.gitea.volumeSize }}
+  postgresqlVolumeSize: {{ .Values.gitea.postgresqlVolumeSize }}
+  giteaSsl: {{ .Values.gitea.ssl }}
+  giteaAdminUser: {{ .Values.gitea.adminUser }}
+  giteaAdminPassword: {{ .Values.gitea.adminPassword }}
+  giteaAdminEmail: {{ .Values.gitea.adminEmail }}

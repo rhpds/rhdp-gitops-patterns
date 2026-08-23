@@ -1,10 +1,11 @@
+# GOTCHA: CPU vLLM image. Wave 4 after wait-rhoai-crds so KServe CRDs exist.
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
   name: vllm-cpu-runtime
   namespace: {{ .Values.aiModels.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "4"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     opendatahub.io/dashboard: "true"

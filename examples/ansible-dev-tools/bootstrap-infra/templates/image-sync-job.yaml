@@ -1,4 +1,5 @@
 {{- if .Values.imageSync.enabled }}
+# GOTCHA: Copies ansible-devspaces + ee-minimal into in-cluster openshift ImageStreams; CheCluster defaultComponents uses that local tag. SA lives in cheCluster.namespace (needs the DevSpaces namespace on cluster).
 apiVersion: batch/v1
 kind: Job
 metadata:

@@ -1,14 +1,6 @@
-# RHOAI's notebook-controller mutating webhook injects the oauth-proxy
-# sidecar/route/annotations automatically, so this stays minimal.
-# UNRESOLVED: MLFLOW_TRACKING_URI below does NOT persist on a live cluster —
-# missing from both the saved Notebook spec and the running pod after
-# apply. RHOAI's connection-notebook.opendatahub.io admission webhook
-# manages Notebook env vars and silently drops this one (MODEL_NAME/
-# MODEL_ENDPOINT, arbitrary names, pass through fine, so it isn't a blanket
-# strip). Likely needs an opendatahub.io/connection-type Secret referenced
-# via a Notebook annotation, same pattern as minio/connections.yaml, instead
-# of a raw env var — not yet verified. Don't trust this value without
-# re-checking `oc get notebook -o yaml` after apply.
+# GOTCHA: RHOAI notebook-controller injects oauth-proxy, CA bundle env/volumes, and Elyra mounts.
+# List those fields here or ArgoCD stays OutOfSync. MLFLOW_TRACKING_URI is stripped by the
+# connection-notebook.opendatahub.io webhook — do not set it (MODEL_* env vars pass through).
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
@@ -26,12 +18,22 @@ spec:
         - name: workbench
           image: {{ .Values.workbench.image }}
           env:
-            - name: MLFLOW_TRACKING_URI
-              value: https://mlflow.redhat-ods-applications.svc:8443
             - name: MODEL_NAME
               value: {{ .Values.aiModels.modelName | quote }}
             - name: MODEL_ENDPOINT
               value: "http://{{ .Values.aiModels.modelName }}-predictor.{{ .Values.aiModels.namespace }}.svc.cluster.local"
+            - name: PIPELINES_SSL_SA_CERTS
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: KF_PIPELINES_SSL_SA_CERTS
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: GIT_SSL_CAINFO
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: PIP_CERT
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: REQUESTS_CA_BUNDLE
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: SSL_CERT_FILE
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
           resources:
             requests:
               cpu: "1"
@@ -42,7 +44,26 @@ spec:
           volumeMounts:
             - name: workbench-data
               mountPath: /opt/app-root/src
+            - name: trusted-ca
+              mountPath: /etc/pki/tls/custom-certs
+              readOnly: true
+            - name: runtime-images
+              mountPath: /opt/app-root/pipeline-runtimes/
+            - name: elyra-dsp-details
+              mountPath: /opt/app-root/runtimes
       volumes:
         - name: workbench-data
           persistentVolumeClaim:
             claimName: workbench-data
+        - name: trusted-ca
+          configMap:
+            name: workbench-trusted-ca-bundle
+            optional: true
+        - name: runtime-images
+          configMap:
+            name: pipeline-runtime-images
+            optional: true
+        - name: elyra-dsp-details
+          secret:
+            optional: true
+            secretName: ds-pipeline-config

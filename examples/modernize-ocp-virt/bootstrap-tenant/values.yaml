@@ -1,21 +1,14 @@
-# Default values for tenant.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# PURPOSE: COPY WHEN: multi-VM travel tenant, Istio Gateway Route, per-user ArgoCD. NOT FOR: GitLab/DevHub (ai-app-dev), simple VM (ocp-virt-lab).
+# Auto-injected by the deployer. Do not pass these manually.
+deployer:
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
 
 username: user1
-password: password
-namespaceSuffix: vms
 
-deployer:
-  domain: apps.cluster-guid.sandbox.opentlc.com
-
-jobAnsibleImage: quay.io/agnosticd/ee-multicloud:latest
-
-tenantLifecycleNamespace: tenant-lifecycle
-
-gitlab:
-  namespace: gitlab
-
-devhub:
-  namespace: rhdh
-  backendSecret: demo-backend-secret-key-change-me
+namespaces:
+  - travel-agency
+  - travel-control
+  - travel-control-new
+  - travel-portal

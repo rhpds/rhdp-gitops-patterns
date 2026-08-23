@@ -1,12 +1,15 @@
-# One CatalogSource covers every redhat-operators Subscription in this
-# chart (currently: rhods-operator) — don't create one per Subscription.
+# One CatalogSource for every redhat-operators Subscription in this chart.
+# GOTCHA: OLM resolves grafana-operator (community-operators) against ALL catalogs. If this
+# CatalogSource is not READY yet, grafana hits ResolutionFailed and never retries (its
+# source catalog did not change). Wave -5 creates it; wait-rhpds-catalog (wave -3 hook)
+# blocks Subscriptions until connectionState is READY.
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: rhpds-redhat-operators
   namespace: openshift-marketplace
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "-5"
 spec:
   sourceType: grpc
   image: {{ .Values.catalog.redhatOperatorsImage }}

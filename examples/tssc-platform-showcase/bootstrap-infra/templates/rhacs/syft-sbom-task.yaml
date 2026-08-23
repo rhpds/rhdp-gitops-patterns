@@ -4,10 +4,7 @@
 {{- $rhtpaUrl = include "rhtpa.serverUrl" . }}
 {{- end }}
 ---
-# Generate CycloneDX SBOM (syft) and optionally POST to RHTPA for attestation visibility.
-#
-# ghcr.io/anchore/syft is distroless (no shell) — Tekton `script:` cannot execute there.
-# Generation steps use the image ENTRYPOINT + args; publish uses UBI for results + curl.
+# GOTCHA: syft is distroless (no shell) — Tekton script: cannot run there. Generate via ENTRYPOINT; publish via UBI.
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -130,8 +127,7 @@ spec:
           TOKEN="$(cat /rhtpa-secret/token)"
         fi
 
-        # Trustify 3 / RHTPA: POST /api/v3/sbom (application/octet-stream).
-        # Fall back to legacy /api/v2/sbom JSON for older bombastic-style endpoints.
+        # GOTCHA: Trustify 3 POST /api/v3/sbom; fall back to /api/v2/sbom for older endpoints.
         set +e
         status=1
         for UPLOAD_URL in \

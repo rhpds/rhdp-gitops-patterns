@@ -1,7 +1,6 @@
 {{- if and .Values.rhdh.enabled .Values.rhdh.operator.enabled .Values.rhdh.operator.createOperatorGroup }}
 ---
-# Dedicated OperatorGroup for the RHDH Operator (AllNamespaces watch).
-# See: Installing RHDH on OpenShift with the Operator.
+# GOTCHA: RHDH is namespace-scoped in rhdh-operator ns; OperatorGroup is required (unlike Gitea).
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:

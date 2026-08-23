@@ -1,13 +1,13 @@
----
+# Gitea is not in redhat-operators. Conventional name/namespace; do not relocate.
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: {{ .Values.gitea.catalogSource.name }}
-  namespace: {{ .Values.gitea.operatorNamespace }}
+  name: redhat-gpte-gitea
+  namespace: openshift-marketplace
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
 spec:
   sourceType: grpc
-  image: {{ .Values.gitea.catalogSource.image }}
-  displayName: {{ .Values.gitea.catalogSource.displayName }}
-  publisher: {{ .Values.gitea.catalogSource.publisher }}
+  image: quay.io/rhpds/gitea-catalog:latest
+  displayName: Red Hat GPTE (Gitea Operator)
+  publisher: Red Hat GPTE

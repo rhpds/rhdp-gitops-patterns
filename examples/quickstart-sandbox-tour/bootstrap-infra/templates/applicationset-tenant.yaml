@@ -1,16 +1,4 @@
-# This ApplicationSet deploys bootstrap-tenant N times, once per user.
-# It is disabled by default. To enable, add the following to values.yaml:
-#
-#   tenant:
-#     git:
-#       url: https://github.com/org/repo.git
-#       revision: main
-#       path: bootstrap-tenant
-#
-#   user:
-#     count: 2
-#     prefix: user
-#
+# Disabled. Do not set tenant: in values.
 {{- if .Values.tenant -}}
 {{- $userCount := int .Values.user.count -}}
 apiVersion: argoproj.io/v1alpha1

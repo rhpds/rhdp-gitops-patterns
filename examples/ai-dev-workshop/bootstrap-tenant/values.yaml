@@ -11,19 +11,15 @@ namespaces:
   - ai-staging
   - gitea
 
-# Shared AI models namespace (read-only access granted)
 aiModels:
   namespace: ai-models
   modelName: openvino-example-model
 
-# AI chatbot application
 aiChatbot:
   image: registry.access.redhat.com/ubi9/python-311
   replicas: 1
   port: 8080
 
-# Per-tenant Gitea instance: one admin user + one user matching .Values.username,
-# with the sample repo(s) migrated into that user's account.
 gitea:
   dataSize: 5Gi
   adminPassword: openshift

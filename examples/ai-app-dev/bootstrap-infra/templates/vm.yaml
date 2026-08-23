@@ -1,3 +1,12 @@
+{{ if .Values.vm -}}
+# Golden-image namespace. HCO also uses this; create it so later DataVolumes have a home.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.vm.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+{{- if and .Values.vm.sourceAccessKeyId (ne .Values.vm.sourceAccessKeyId "change-me") }}
 ---
 apiVersion: v1
 kind: Secret
@@ -9,12 +18,15 @@ stringData:
   accessKeyId: {{ .Values.vm.sourceAccessKeyId }}
   secretKey: {{ .Values.vm.sourceSecretAccessKey }}
 ---
+# CRDs come from CNV/CDI; SkipDryRunOnMissingResource required until HyperConverged is ready.
 apiVersion: cdi.kubevirt.io/v1beta1
 kind: DataVolume
 metadata:
   name: {{ .Values.vm.name }}
   namespace: {{ .Values.vm.namespace }}
   annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     # Required for WaitForFirstConsumer storage classes (AWS EBS gp3-csi).
     # Without this, CDI and the storage provisioner deadlock waiting for each other.
     cdi.kubevirt.io/storage.bind.immediate.requested: "true"
@@ -39,8 +51,13 @@ kind: DataSource
 metadata:
   name: {{ .Values.vm.name }}
   namespace: {{ .Values.vm.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   source:
     pvc:
       name: {{ .Values.vm.name }}
       namespace: {{ .Values.vm.namespace }}
+{{- end }}
+{{- end }}

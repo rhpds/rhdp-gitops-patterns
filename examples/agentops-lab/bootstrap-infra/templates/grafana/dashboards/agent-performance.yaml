@@ -1,7 +1,4 @@
-# PLACEHOLDER metric names — unlike vLLM, "agent performance" has no standard
-# exporter. Assumes agent_task_duration_seconds, agent_task_total{status=...},
-# agent_tool_calls_total{tool=...}; rename to match actual instrumentation
-# before reusing, don't assume these names exist elsewhere.
+# PLACEHOLDER metrics (agent_task_*, agent_tool_calls_total) — rename to match actual instrumentation.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:

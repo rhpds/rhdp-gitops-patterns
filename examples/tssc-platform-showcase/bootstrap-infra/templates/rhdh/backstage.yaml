@@ -1,7 +1,6 @@
 {{- if .Values.rhdh.enabled }}
 ---
-# Backstage CR — RHDH Operator instance for the TSSC platform showcase.
-# Reuse source: RHADS / RHDH Operator install pattern (rhdh.redhat.com).
+# Backstage CR — RHDH instance. SkipDryRunOnMissingResource until the operator CRD exists.
 apiVersion: {{ .Values.rhdh.apiVersion }}
 kind: Backstage
 metadata:
@@ -30,8 +29,7 @@ spec:
     {{- if .Values.rhdh.dynamicPlugins.enabled }}
     dynamicPluginsConfigMapName: {{ .Values.rhdh.dynamicPlugins.configMapName }}
     {{- end }}
-    # Note: v1alpha5 (RHDH Operator 1.10+) removed application.replicas;
-    # override replica count via spec.deployment.patch if needed.
+    # GOTCHA: v1alpha5 (RHDH Operator 1.10+) removed application.replicas; use spec.deployment.patch.
     route:
       enabled: {{ .Values.rhdh.route.enabled }}
   database:

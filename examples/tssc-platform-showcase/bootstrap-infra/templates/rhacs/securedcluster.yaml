@@ -1,16 +1,6 @@
 {{- if and .Values.rhacs.enabled .Values.rhacs.securedCluster.enabled }}
 ---
-# SecuredCluster — Sensor / Collector / Admission on the showcase cluster.
-# Scheduled at wave 104, AFTER the wave-103 rhacs-init-bundle-mint Job (a Sync
-# hook, which ArgoCD waits to complete before advancing). The RHACS operator's
-# securedcluster-controller only reconciles on changes to the CR itself (it
-# does not watch arbitrary Secrets in the namespace), and retries failed
-# reconciles on a slow exponential backoff. If this CR is created before the
-# init-bundle secrets (sensor-tls/collector-tls/admission-control-tls) exist,
-# its first reconcile permanently fails with "some init-bundle secrets
-# missing" and can sit backed off for many minutes before naturally retrying.
-# Ordering the CR after the Job guarantees the secrets are already present on
-# the CR's very first reconcile.
+# GOTCHA: apply after init-bundle Job (wave 103); operator does not watch secrets, first reconcile fails if TLS missing.
 apiVersion: {{ .Values.rhacs.apiVersion }}
 kind: SecuredCluster
 metadata:

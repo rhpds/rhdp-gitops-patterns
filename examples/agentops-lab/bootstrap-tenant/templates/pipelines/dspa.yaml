@@ -1,10 +1,5 @@
-# apiVersion group is "datasciencepipelinesapplications" (plural) — easy to
-# confuse with "datasciencepipelines", the unrelated DataScienceCluster
-# component name. Object storage is the per-tenant MinIO in minio/minio.yaml
-# (external), not DSPA's embedded-MinIO option. Requires aipipelines:
-# Managed in bootstrap-infra's DataScienceCluster. Wave 4, after
-# create-buckets (wave 3): the "pipeline" bucket must exist before DSPA's
-# object-storage health check runs.
+# GOTCHA: apiVersion group is datasciencepipelinesapplications (plural), not datasciencepipelines.
+# Wave 4 after create-buckets (wave 3). Requires aipipelines: Managed.
 apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
 kind: DataSciencePipelinesApplication
 metadata:

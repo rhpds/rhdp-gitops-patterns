@@ -1,0 +1,70 @@
+# GOTCHA: SkipDryRunOnMissingResource still applies; missing VirtualMachine CRDs fail
+# wave 1 and ArgoCD exhausts retries before HyperConverged installs kubevirt.
+# Block the tenant sync until the CRD exists so VMs apply on the first successful wave.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wait-vm-crd
+  namespace: {{ .Values.username }}-travel-agency
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.username }}-wait-vm-crd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+rules:
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.username }}-wait-vm-crd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.username }}-wait-vm-crd
+subjects:
+  - kind: ServiceAccount
+    name: wait-vm-crd
+    namespace: {{ .Values.username }}-travel-agency
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wait-vm-crd
+  namespace: {{ .Values.username }}-travel-agency
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,BeforeHookCreation
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      serviceAccountName: wait-vm-crd
+      restartPolicy: OnFailure
+      containers:
+        - name: wait
+          image: registry.redhat.io/openshift4/ose-cli:v4.14
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Waiting for virtualmachines.kubevirt.io"
+              for i in $(seq 1 180); do
+                if oc get crd virtualmachines.kubevirt.io >/dev/null 2>&1; then
+                  echo "virtualmachines.kubevirt.io is present"
+                  exit 0
+                fi
+                echo "attempt $i CRD missing"
+                sleep 10
+              done
+              echo "ERROR: timed out waiting for virtualmachines.kubevirt.io"
+              exit 1

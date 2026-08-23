@@ -1,5 +1,4 @@
-# PromQL uses vLLM's real /metrics names (vllm:*) — do not invent metric
-# names for a known runtime, check its actual exporter output first.
+# GOTCHA: PromQL uses vLLM's real /metrics names (vllm:*) — do not invent names for a known runtime.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:

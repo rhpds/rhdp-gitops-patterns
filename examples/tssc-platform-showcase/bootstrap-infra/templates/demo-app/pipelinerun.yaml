@@ -5,12 +5,8 @@
 {{- $rekorUrl := include "rhtas.rekorUrl" . }}
 {{- $tufUrl := include "rhtas.tufUrl" . }}
 ---
-# Fixed-name PipelineRun (not generateName) so re-syncing this chart never creates
-# a duplicate run — this is the one real build+scan+sign of the platform's demo
-# image, run once at bootstrap, not simulated and not re-triggered by ArgoCD.
-# SkipDryRunOnMissingResource is required because this depends on CRDs (Pipeline,
-# and the resolver-referenced Tasks in stackrox/openshift-pipelines) that may not
-# yet be Established on the very first apply.
+# GOTCHA: fixed name (not generateName) so re-sync does not duplicate runs.
+# SkipDryRunOnMissingResource: Pipeline CRDs may not exist on first apply.
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:

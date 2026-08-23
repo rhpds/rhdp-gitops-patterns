@@ -7,14 +7,17 @@ deployer:
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 
-# OpenShift Serverless operator
+# GOTCHA: one CatalogSource for every redhat-operators Subscription; re-pin per OCP version.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
 serverless:
   channel: stable
-  source: redhat-operators
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
 
-# OpenShift Pipelines operator
 pipelines:
-  channel: pipelines-1.17
-  source: redhat-operators
+  # GOTCHA: rhpds catalog snapshot has latest/pipelines-1.21/1.22/1.23 — not pipelines-1.17.
+  channel: pipelines-1.23
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace

@@ -1,15 +1,6 @@
-# Only set the component(s) the lab actually needs (dashboard here — the tenant modules
-# use an external MaaS for model access, not local RHOAI model serving) and let the
-# operator default everything else to Removed.
-#
-# GOTCHA: RHOAI >= 3.x's DataScienceCluster CRD converts to a v2 component schema that
-# renamed/replaced several v1 component names (codeflare, datasciencepipelines,
-# modelmeshserving, etc. are gone; aipipelines, feastoperator, llamastackoperator,
-# mlflowoperator, sparkoperator, trainer, kserve.nim, ... took their place). Submitting
-# the old v1 component names is silently dropped by the conversion webhook, and the
-# resource then reports permanent OutOfSync in ArgoCD because the live object never
-# matches the desired manifest. Only set fields you actually need managed.
-apiVersion: datasciencecluster.opendatahub.io/v1
+# Bare DataScienceCluster. Models: ai-dev-workshop. Notebooks/MLflow/Grafana: agentops-lab.
+# GOTCHA: storage version is v2 — v1 fields are silently dropped (permanent OutOfSync).
+apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
   name: default-dsc

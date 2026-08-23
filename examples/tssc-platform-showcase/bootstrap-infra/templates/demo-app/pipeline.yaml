@@ -1,7 +1,6 @@
 {{- if .Values.demoApp.enabled }}
 ---
-# Tekton Pipeline — hybrid build (BuildConfig) + ACS + SBOM + RHTAS keyless cosign.
-# Runs exactly once at bootstrap via the fixed-name PipelineRun in pipelinerun.yaml.
+# GOTCHA: hybrid BuildConfig + ACS + SBOM + RHTAS keyless cosign. Runs once via the fixed-name PipelineRun.
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
@@ -57,14 +56,7 @@ spec:
     - name: source
     - name: sbom
   tasks:
-    # Gitea's own sync-wave (155) runs well before this PipelineRun's (210),
-    # but the Gitea CRD has no ArgoCD health check registered, so ArgoCD
-    # advances past that wave as soon as the CR is created — not once the
-    # operator has actually finished standing up the Gitea pod/route/repo
-    # migration. On a slower cluster/operator that leaves a real race window
-    # where the clone below hits "connection refused" because the Gitea pod
-    # isn't listening yet. Wait for a plain TCP connect to the repo host:port
-    # (what git itself needs) before ever attempting the clone.
+    # GOTCHA: Gitea CR has no ArgoCD health check; wait for TCP or clone hits connection refused.
     - name: wait-for-gitea
       params:
         - name: repo-url
@@ -118,34 +110,13 @@ spec:
           value: $(params.repo-url)
         - name: REVISION
           value: $(params.revision)
-        # repo-url now points at the whole rhdp-gitops-patterns monorepo (see
-        # values.yaml gitea.migratedRepo comment). DEPTH is already 1 by
-        # default on this Task (confirmed against the live Task on cluster),
-        # set explicitly here so it stays shallow even if that default ever
-        # changes. SPARSE_CHECKOUT_DIRECTORIES scopes the actual checked-out
-        # working tree to just the app subdir instead of every other example
-        # in the repo — the clone still touches the whole repo's refs, but
-        # disk/workspace content is limited to what the build actually needs.
+        # GOTCHA: migratedRepo is the whole monorepo; sparse-checkout app-subdir (DEPTH 1).
         - name: DEPTH
           value: "1"
         - name: SPARSE_CHECKOUT_DIRECTORIES
           value: $(params.app-subdir)
 
-    # OpenShift Binary BuildConfig (Dockerfile) — triggered directly from the
-    # git-cloned workspace via --from-dir, regardless of the BuildConfig's own
-    # configured Git source (see buildconfig.yaml header comment).
-    #
-    # IMPORTANT: --from-dir must point at the WORKSPACE ROOT, not the
-    # app-subdir. git sparse-checkout does not flatten the checked-out tree —
-    # it preserves each file's original repo-relative path and just prunes
-    # everything outside the requested directories. So after the clone step's
-    # SPARSE_CHECKOUT_DIRECTORIES, the workspace root already contains
-    # <app-subdir>/Dockerfile at its normal nested path, and the BuildConfig's
-    # own contextDir (buildconfig.yaml, set to the same app-subdir) is what
-    # narrows the uploaded root down to it. Pointing --from-dir at the
-    # app-subdir directly double-applies that path (uploaded root would BE the
-    # subdir, then contextDir looks for <app-subdir> again inside it) and
-    # fails with "provided context directory does not exist" — confirmed live.
+    # GOTCHA: --from-dir is workspace root, not app-subdir. Sparse-checkout keeps nested paths; BC contextDir narrows. Double path fails.
     - name: openshift-build
       runAfter: [clone]
       workspaces:
@@ -172,20 +143,7 @@ spec:
               oc start-build "${BC}" --from-dir="${SRC}" --follow --wait
               echo "Build ${BC} finished"
 
-    # RHACS' ci-token-mint Job (templates/rhacs/ci-token-job.yaml) creates
-    # Secret rox-secret-name in rox-secret-source-namespace (stackrox) — but
-    # Tekton always runs a Task's TaskRun pod in the PipelineRun's OWN
-    # namespace (showcase-app here), never in the namespace where the Task
-    # object is merely defined, and a plain `secret:` volume can only
-    # reference a Secret that exists in the pod's own namespace. Confirmed
-    # live: acs-image-check's `optional: true` secret volume silently mounted
-    # an empty directory (no error) because rhacs-ci-secrets only existed in
-    # stackrox, not showcase-app, so the Task kept soft-skipping with "missing
-    # rox-api-endpoint" even though the Secret genuinely existed elsewhere.
-    # Mirror it into this namespace first using the "pipeline" ServiceAccount,
-    # which already has `edit` here (serviceaccount-rbac.yaml) plus a
-    # narrowly-scoped read-only RoleBinding into stackrox for just this one
-    # Secret (templates/rhacs/ci-token-rbac.yaml).
+    # GOTCHA: CI token Secret is in rhacs ns; TaskRun pods run in demoApp ns — Secret must be mirrored.
     - name: mirror-rhacs-secret
       runAfter: [openshift-build]
       params:

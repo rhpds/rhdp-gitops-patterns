@@ -7,13 +7,21 @@ deployer:
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 
-# Operator settings
+# GOTCHA: one CatalogSource for every redhat-operators Subscription; re-pin per OCP version.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
 kiali:
   channel: stable
-  source: redhat-operators
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
 
 servicemesh:
   channel: stable
-  source: redhat-operators
+  source: rhpds-redhat-operators
+  sourceNamespace: openshift-marketplace
+
+webTerminal:
+  channel: fast
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace

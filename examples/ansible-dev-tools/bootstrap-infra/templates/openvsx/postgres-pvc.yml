@@ -1,4 +1,5 @@
 {{- if .Values.openvsx.enabled }}
+# GOTCHA: Same sync-wave as the postgresql Deployment.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

@@ -1,0 +1,16 @@
+# GOTCHA: wait-rhpds-catalog (wave -3 Sync hook) must succeed before this wave so
+# rhpds-redhat-operators is READY. ResolutionFailed Degrades the Subscription and
+# blocks HyperConverged (wave 1) until retries are exhausted.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: {{ .Values.cnv.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  channel: {{ .Values.cnv.channel }}
+  installPlanApproval: Automatic
+  name: kubevirt-hyperconverged
+  source: {{ .Values.cnv.source }}
+  sourceNamespace: {{ .Values.cnv.sourceNamespace }}

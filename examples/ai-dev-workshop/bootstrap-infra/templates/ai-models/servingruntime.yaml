@@ -1,3 +1,4 @@
+# GOTCHA: CPU vLLM image (not GPU). SkipDryRunOnMissingResource until KServe CRDs exist.
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:

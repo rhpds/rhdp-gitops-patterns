@@ -1,7 +1,6 @@
 {{- if and .Values.rhacs.enabled .Values.rhacs.central.enabled }}
 ---
 # Central CR — RHACS management plane (UI, API, Scanner).
-# See: Installing RHACS on OpenShift (Operator).
 apiVersion: {{ .Values.rhacs.apiVersion }}
 kind: Central
 metadata:

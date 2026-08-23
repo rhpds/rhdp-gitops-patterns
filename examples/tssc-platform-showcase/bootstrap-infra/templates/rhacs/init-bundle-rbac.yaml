@@ -48,7 +48,7 @@ subjects:
     name: {{ .Values.rhacs.securedCluster.initBundleJob.serviceAccountName }}
     namespace: {{ .Values.rhacs.namespace }}
 ---
-# UBI Job installs oc/python via dnf — needs anyuid (same pattern as other one-time Jobs).
+# GOTCHA: UBI Jobs that dnf-install need anyuid.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

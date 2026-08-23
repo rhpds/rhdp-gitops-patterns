@@ -12,7 +12,7 @@ data:
         gitlab_namespace: {{ .Values.gitlab.namespace }}
         gitlab_host: gitlab-{{ .Values.gitlab.namespace }}.{{ .Values.deployer.domain }}
         username: {{ .Values.username }}
-        password: {{ .Values.password }}
+        password: {{ .Values.password | quote }}
       tasks:
         - name: Retrieve root token
           kubernetes.core.k8s_info:
@@ -21,7 +21,12 @@ data:
             name: root-user-personal-token
             namespace: '{{ "{{" }} gitlab_namespace {{ "}}" }}'
           register: r_root_token
-          failed_when: r_root_token.resources[0].data.token | length == 0
+          retries: 180
+          delay: 10
+          until:
+            - r_root_token.resources is defined
+            - r_root_token.resources | length > 0
+            - r_root_token.resources[0].data.token | default('') | length > 0
 
         - name: Decode root token
           set_fact:

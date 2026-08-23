@@ -4,6 +4,8 @@ kind: ConfigMap
 metadata:
   name: openvsx-import-extension-config
   namespace: {{ .Values.openvsx.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
   labels:
     app: openvsx-import-extensions
     app.kubernetes.io/component: openvsx-import-extensions

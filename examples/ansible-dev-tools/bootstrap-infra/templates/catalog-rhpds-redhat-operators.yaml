@@ -1,0 +1,13 @@
+# One CatalogSource for every redhat-operators Subscription in this chart.
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: rhpds-redhat-operators
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  sourceType: grpc
+  image: {{ .Values.catalog.redhatOperatorsImage }}
+  displayName: RHPDS Pinned Snapshot (redhat-operators)
+  publisher: Red Hat GPTE

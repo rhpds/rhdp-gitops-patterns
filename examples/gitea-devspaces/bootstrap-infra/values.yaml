@@ -1,3 +1,4 @@
+# PURPOSE: Gitea operator (CatalogSource+Subscription in openshift-operators, no OperatorGroup) + shared Gitea CR + DevSpaces CheCluster. NOT FOR: per-user Gitea, repo-migrate GOTCHAs, OpenVSX, per-user ArgoCD.
 # Auto-injected by the deployer. Do not pass these manually.
 deployer:
   domain: apps.cluster.example.com
@@ -7,33 +8,25 @@ deployer:
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 
-# Gitea operator and instance configuration
-gitea:
-  operatorNamespace: gitea-operator
-  instanceNamespace: gitea
-  catalogSource:
-    name: redhat-rhpds-gitea
-    image: quay.io/rhpds/gitea-catalog:latest
-    displayName: Red Hat Demo Platform (Gitea)
-    publisher: Red Hat Demo Platform
-  operator:
-    name: gitea-operator
-    channel: stable
-  instance:
-    name: gitea
-    adminUser: gitea-admin
-    adminPassword: openshift
-    adminEmail: gitea-admin@demo.redhat.com
-    volumeSize: 5Gi
-    postgresqlVolumeSize: 5Gi
-    ssl: true
+# Pinned snapshot. Re-verify per target OCP version at generation time.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
 
-# OpenShift Dev Spaces configuration
+gitea:
+  namespace: gitea
+  name: gitea
+  adminUser: gitea-admin
+  adminPassword: openshift
+  adminEmail: gitea-admin@demo.redhat.com
+  volumeSize: 5Gi
+  postgresqlVolumeSize: 5Gi
+  ssl: true
+
 devspaces:
   namespace: openshift-devspaces
   operator:
     name: devspaces
-    source: redhat-operators
+    source: rhpds-redhat-operators
     sourceNamespace: openshift-marketplace
     channel: stable
   cheCluster:

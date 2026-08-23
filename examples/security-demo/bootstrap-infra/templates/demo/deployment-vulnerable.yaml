@@ -1,3 +1,4 @@
+# GOTCHA: centos:7 is EOL with known CVEs so RHACS has findings to show. Sleep loop only — no real app.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

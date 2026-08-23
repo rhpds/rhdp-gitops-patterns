@@ -1,6 +1,5 @@
-# Example generated and validated by gitops-helper test harness
 apiVersion: v2
 name: bootstrap-tenant
-description: Per-user tenant environment for the GitOps Workshop
+description: "COPY WHEN: generating per-user ArgoCD. NOT FOR: cluster openshift-gitops for student access."
 type: application
 version: 0.1.0

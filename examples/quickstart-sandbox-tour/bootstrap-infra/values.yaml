@@ -9,24 +9,18 @@ tenantLifecycle: ""
 # tenantLifecycle:
 #   namespace: tenant-lifecycle
 
-# Pinned redhat-operators snapshot — shared by every redhat-operators Subscription in
-# this chart. Re-verify and re-pin per target OCP version at generation time (see
-# "Verifying and Pinning Operator Channels" in gitops-patterns.md).
-redhatOperatorsCatalog:
-  image: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
 
+# Bare DataScienceCluster. Models: ai-dev-workshop. Notebooks/MLflow/Grafana: agentops-lab.
 rhoai:
   namespace: redhat-ods-operator
   channel: stable-3.x
   source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
 
-# Shared, read-only Gitea mirror of upstream lab/QuickStart repos — so a fully or
-# partially air-gapped tenant module can deploy from an in-cluster source instead of
-# live GitHub access.
 gitea:
   namespace: gitea
-  catalogImage: quay.io/rhpds/gitea-catalog:latest
   adminUser: gitea-admin
   adminPassword: openshift
   dataSize: 5Gi

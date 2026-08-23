@@ -1,3 +1,4 @@
+# Requires Gitea operator (CatalogSource+Subscription in bootstrap-infra). Unique here: one Gitea CR per tenant.
 apiVersion: pfe.rhpds.com/v1
 kind: Gitea
 metadata:

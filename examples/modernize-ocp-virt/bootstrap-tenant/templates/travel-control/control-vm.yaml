@@ -3,6 +3,9 @@ kind: VirtualMachine
 metadata:
   name: control-vm
   namespace: {{ .Values.username }}-travel-control
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1

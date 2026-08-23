@@ -1,3 +1,4 @@
+# GOTCHA: CheCluster CRD comes from the DevSpaces operator (templates/devspaces). SkipDryRunOnMissingResource is required until the CSV installs.
 ---
 apiVersion: org.eclipse.che/v2
 kind: CheCluster
@@ -6,6 +7,7 @@ metadata:
   namespace: {{ .Values.cheCluster.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
     cheServer:

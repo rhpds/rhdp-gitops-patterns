@@ -1,0 +1,14 @@
+{{ if .Values.cnv -}}
+# CRD comes from CNV operator; SkipDryRunOnMissingResource required.
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: {{ .Values.cnv.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,DisableResourceHealthCheck=true
+spec:
+  infra: {}
+  workloads: {}
+{{- end }}

@@ -1,7 +1,6 @@
 {{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled }}
 ---
-# Tekton Task — policy gate via `roxctl image check` (RHACS / TSSC pattern).
-# Used by the demo-app Pipeline (sample-service-build-sign) alongside the SBOM task.
+# Tekton Task — `roxctl image check` policy gate used by the demo-app Pipeline.
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -108,20 +107,44 @@ spec:
 
         echo "roxctl image check --image=${PARAM_IMAGE}"
         echo "(Evaluates Central build-lifecycle policies — enable Fixable Critical+ CVEs for OSV-friendly fails)"
-        set +e
-        ./roxctl image check \
-          $( [ "${PARAM_INSECURE_SKIP_TLS_VERIFY}" = "true" ] && echo -n "--insecure-skip-tls-verify" ) \
-          -e "${ROX_CENTRAL_ENDPOINT}" \
-          --image "${PARAM_IMAGE}" \
-          --output json --force \
-          > /steps-shared-folder/acs-image-check.json
-        status=$?
-        set -e
-        cat /steps-shared-folder/acs-image-check.json
+        # GOTCHA: Scanner V4 matcher initial vuln-store load often takes 15-30 min after Central Available.
+        max_attempts=60
+        sleep_s=20
+        attempt=1
+        status=1
+        while [ "${attempt}" -le "${max_attempts}" ]; do
+          echo "roxctl image check attempt ${attempt}/${max_attempts}"
+          set +e
+          ./roxctl image check \
+            $( [ "${PARAM_INSECURE_SKIP_TLS_VERIFY}" = "true" ] && echo -n "--insecure-skip-tls-verify" ) \
+            -e "${ROX_CENTRAL_ENDPOINT}" \
+            --image "${PARAM_IMAGE}" \
+            --output json --force \
+            > /steps-shared-folder/acs-image-check.json 2>/steps-shared-folder/acs-image-check.err
+          status=$?
+          set -e
+          cat /steps-shared-folder/acs-image-check.err || true
+          cat /steps-shared-folder/acs-image-check.json || true
+          if [ "${status}" -eq 0 ]; then
+            break
+          fi
+          err="$(cat /steps-shared-folder/acs-image-check.err /steps-shared-folder/acs-image-check.json 2>/dev/null || true)"
+          if echo "${err}" | grep -qiE 'matcher is not initialized|FailedPrecondition|image enrichment error|error scanning image'; then
+            echo "Transient RHACS scanner error — retry in ${sleep_s}s"
+            sleep "${sleep_s}"
+            attempt=$((attempt + 1))
+            continue
+          fi
+          break
+        done
         if [ "${status}" -eq 0 ]; then
           echo -n "passed" > "$(results.check-status.path)"
-        else
-          echo -n "failed" > "$(results.check-status.path)"
+          exit 0
         fi
+        err="$(cat /steps-shared-folder/acs-image-check.err /steps-shared-folder/acs-image-check.json 2>/dev/null || true)"
+        if echo "${err}" | grep -qiE 'matcher is not initialized|FailedPrecondition|image enrichment error|error scanning image'; then
+          skip_exit "RHACS scanner matcher still initializing after ${max_attempts} attempts"
+        fi
+        echo -n "failed" > "$(results.check-status.path)"
         exit "${status}"
 {{- end }}

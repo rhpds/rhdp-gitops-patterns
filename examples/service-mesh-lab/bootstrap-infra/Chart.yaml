@@ -1,6 +1,5 @@
-# Example generated and validated by gitops-helper test harness
 apiVersion: v2
 name: bootstrap-infra
-description: Cluster-scoped shared infrastructure for an RHDP lab environment
+description: "COPY WHEN: Service Mesh/Istio + Kiali + VirtualService + frontend/backend + Web Terminal operator. NOT FOR: Istio Gateway (modernize-ocp-virt), GitLab/DevHub (ai-app-dev)."
 type: application
 version: 0.1.0

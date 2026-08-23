@@ -2,8 +2,7 @@
 {{- $existingSub := lookup "operators.coreos.com/v1alpha1" "Subscription" .Values.rhtas.operator.namespace .Values.rhtas.operator.name }}
 {{- if not $existingSub.metadata }}
 ---
-# RHTAS Operator via OLM — Trusted Software Factory / RHADS pattern.
-# Installs into openshift-operators (AllNamespaces). Skipped if Subscription exists.
+# RHTAS Operator in openshift-operators (AllNamespaces). Skipped if Subscription exists.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

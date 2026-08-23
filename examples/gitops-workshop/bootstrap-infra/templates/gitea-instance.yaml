@@ -1,4 +1,5 @@
-# Gitea CR - depends on the Gitea operator CRD
+# Requires Gitea operator from examples/gitea-devspaces (CatalogSource+Subscription in openshift-operators).
+# Unique here: giteaCreateUsers + sample-repo Job.
 apiVersion: pfe.rhpds.com/v1
 kind: Gitea
 metadata:

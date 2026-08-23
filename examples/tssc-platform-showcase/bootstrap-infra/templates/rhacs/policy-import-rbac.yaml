@@ -11,9 +11,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "106"
 ---
-# UBI Job installs python3/curl via dnf — needs anyuid (same pattern as other one-time Jobs).
-# No Kubernetes API access is required: the CI token Secret is mounted as a volume,
-# not fetched via the API.
+# GOTCHA: UBI Jobs that dnf-install need anyuid. Secret is volume-mounted, no API access.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

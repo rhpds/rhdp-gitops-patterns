@@ -5,6 +5,9 @@ kind: VirtualMachine
 metadata:
   name: rhel-podman
   namespace: "{{ .Values.username }}-vm"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   runStrategy: Always
   dataVolumeTemplates:

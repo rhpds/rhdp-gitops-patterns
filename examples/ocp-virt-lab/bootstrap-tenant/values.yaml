@@ -1,3 +1,4 @@
+# PURPOSE: simple per-user VirtualMachine. NOT FOR: multi-VM travel app (modernize-ocp-virt).
 # Auto-injected by the deployer. Do not pass these manually.
 deployer:
   domain: apps.cluster.example.com

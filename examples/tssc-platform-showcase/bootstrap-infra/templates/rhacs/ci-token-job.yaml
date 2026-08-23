@@ -1,12 +1,7 @@
 {{- if and .Values.rhacs.enabled .Values.rhacs.pipelineHooks.enabled .Values.rhacs.pipelineHooks.ciTokenJob.enabled }}
 {{- $endpoint := include "rhacs.centralEndpoint" . }}
 ---
-# Mint a Central "Continuous Integration" API token and OWN Secret rhacs-ci-secrets
-# imperatively (this Job creates/patches it with oc — it is never templated by Helm).
-# ArgoCD therefore never declares desired state for that Secret and has nothing to
-# diff, avoiding the permanently-OutOfSync Secret problem a resourceIgnoreDifferences
-# override would otherwise paper over. Idempotent: skips minting when a token is
-# already present.
+# GOTCHA: Job owns Secret rhacs-ci-secrets (oc create/patch, never Helm) so ArgoCD has no desired state to drift. Idempotent if token exists.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -106,9 +101,6 @@ spec:
                 exit 1
               fi
 
-              # This Job owns Secret ${SECRET_NAME} end to end (create-or-patch) — it is
-              # never templated by Helm/ArgoCD, so there is no declared desired state to
-              # drift out of sync with.
               if oc -n "${NAMESPACE}" get secret "${SECRET_NAME}" >/dev/null 2>&1; then
                 oc -n "${NAMESPACE}" patch secret "${SECRET_NAME}" --type merge \
                   -p "{\"stringData\":{\"rox-api-endpoint\":\"${ENDPOINT}\",\"rox-api-token\":\"${TOKEN}\"}}"

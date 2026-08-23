@@ -1,4 +1,4 @@
-# ConfigMaps providing static content for S2I builder images
+# GOTCHA: S2I builders need index.html at /opt/app-root/src — this ConfigMap is the mount source.
 apiVersion: v1
 kind: ConfigMap
 metadata:

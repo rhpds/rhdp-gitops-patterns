@@ -19,9 +19,16 @@ spec:
     - name: source
   tasks:
     - name: build
+      # GOTCHA: Pipelines 1.23 has no ClusterTask CRD; kind: ClusterTask is rejected as a custom task.
       taskRef:
-        name: buildah
-        kind: ClusterTask
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: buildah
+          - name: namespace
+            value: openshift-pipelines
       params:
         - name: IMAGE
           value: $(params.IMAGE)

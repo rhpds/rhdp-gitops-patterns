@@ -21,9 +21,7 @@ data:
         origin: {{ $baseUrl | quote }}
     organization:
       name: TSSC Platform Showcase
-    # No IdP wired into RHDH itself for this showcase — Guest only (no GitHub OAuth).
-    # Without signInPage: guest the UI offers a broken GitHub button
-    # (Unknown auth provider 'github').
+    # GOTCHA: Guest sign-in only. Without signInPage: guest the UI shows a broken GitHub button.
     auth:
       environment: development
       providers:

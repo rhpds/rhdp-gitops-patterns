@@ -10,10 +10,7 @@ app.kubernetes.io/part-of: tssc-platform-showcase
 {{- end -}}
 
 {{/*
-In-cluster Gitea clone URL for the migrated repo (the whole rhdp-gitops-patterns
-monorepo — sample-service lives at .Values.gitea.migratedRepo.appSubdir inside
-it; Gitea operator migrates repos directly under the created user's account,
-no Organization).
+In-cluster Gitea clone URL. Operator cannot select a subdir — whole monorepo under gitea.user.username.
 */}}
 {{- define "demoApp.giteaRepoUrl" -}}
 http://gitea.{{ .Values.gitea.namespace }}.svc:3000/{{ .Values.gitea.user.username }}/{{ .Values.gitea.migratedRepo.repoName }}.git

@@ -1,14 +1,14 @@
----
+# AllNamespaces: openshift-operators. Do not create an OperatorGroup.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: {{ .Values.gitea.operator.name }}
-  namespace: {{ .Values.gitea.operatorNamespace }}
+  name: gitea-operator
+  namespace: openshift-operators
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
 spec:
-  channel: {{ .Values.gitea.operator.channel }}
+  channel: stable
   installPlanApproval: Automatic
-  name: {{ .Values.gitea.operator.name }}
-  source: {{ .Values.gitea.catalogSource.name }}
-  sourceNamespace: {{ .Values.gitea.operatorNamespace }}
+  name: gitea-operator
+  source: redhat-gpte-gitea
+  sourceNamespace: openshift-marketplace

@@ -3,7 +3,8 @@
 # Declare variables to be passed into your templates.
 
 username: user-guid
-password: password
+# GitLab rejects common passwords ("password", "openshift", "demo", "user", etc.).
+password: "Rhdh-G1tl4b!26" # notsecret
 namespaceSuffix: demo
 
 deployer:

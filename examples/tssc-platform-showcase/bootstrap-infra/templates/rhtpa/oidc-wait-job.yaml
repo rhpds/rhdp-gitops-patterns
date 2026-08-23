@@ -1,8 +1,7 @@
 {{- if and .Values.rhtpa.enabled .Values.rhtpa.oidcWait.enabled }}
 {{- $issuer := include "rhtpa.oidcIssuer" . }}
 ---
-# Wait for Keycloak OIDC discovery, then roll TPA server if not Ready.
-# Avoids CrashLoop when rhtpa syncs before the keycloak realm is available.
+# GOTCHA: wait for Keycloak OIDC discovery then roll TPA server — avoids CrashLoop if rhtpa syncs first.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -77,10 +76,18 @@ spec:
                 exit 0
               fi
 
-              ready="$(oc -n "${NAMESPACE}" get deploy "${SERVER_DEPLOYMENT}" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
+              ready="$(oc -n "${NAMESPACE}" get deploy "${SERVER_DEPLOYMENT}" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
               ready="${ready:-0}"
               if [[ "${ready}" -ge 1 ]]; then
                 echo "Deployment ${SERVER_DEPLOYMENT} already Ready (${ready}) — no restart"
+                exit 0
+              fi
+
+              # GOTCHA: oc rollout status needs watch RBAC. Do not restart while a replica
+              # is still coming up — two server pods exhaust PostgreSQL and CrashLoop.
+              echo "Waiting for ${SERVER_DEPLOYMENT} Ready (up to ${ROLLOUT_TIMEOUT})..."
+              if oc -n "${NAMESPACE}" rollout status "deployment/${SERVER_DEPLOYMENT}" --timeout="${ROLLOUT_TIMEOUT}"; then
+                echo "Deployment ${SERVER_DEPLOYMENT} became Ready — no restart"
                 exit 0
               fi
 

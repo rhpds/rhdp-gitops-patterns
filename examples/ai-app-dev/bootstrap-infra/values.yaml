@@ -9,6 +9,18 @@ user:
 deployer:
   domain: apps.cluster-guid.sandbox.opentlc.com
   apiUrl: https://api.cluster-guid.sandbox.opentlc.com:6443
+  guid: xxxxx
+
+# Pinned snapshot. Re-verify per target OCP version at generation time.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
+# CNV operator: copy from examples/ocp-virt-lab. Needed for DataVolume/DataSource/VM CRDs.
+cnv:
+  channel: stable
+  source: rhpds-redhat-operators
+  sourceNamespace: openshift-marketplace
+  namespace: openshift-cnv
 
 vm:
   name: student-vm
@@ -22,7 +34,7 @@ vm:
 devhub:
   namespace: rhdh
   channel: fast-1.8
-  source: redhat-operators
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
   keycloakRealm: sso
   oauth:
@@ -36,6 +48,7 @@ gitlab:
   postgresqlImage: quay.io/redhat-gpte/gitlab-postgresql:14
   redisImage: redis:6.2.6
   rootPassword: Dem0-G1tl4b!2026
+  storageClass: ocs-external-storagecluster-ceph-rbd-immediate
   repos:
     - name: ai-app-dev-automation
       sourceUrl: https://github.com/rhpds/ai-app-dev-automation.git

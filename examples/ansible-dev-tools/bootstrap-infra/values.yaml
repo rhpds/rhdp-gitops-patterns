@@ -1,10 +1,21 @@
-# Default values for bootstrap.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
+# PURPOSE: OpenVSX registry + image-sync + CheCluster wired to OpenVSX. NOT FOR: vanilla DevSpaces+Gitea (gitea-devspaces).
+# Auto-injected by the deployer. Do not pass these manually.
 deployer:
-  domain: apps.cluster-guid.sandbox.opentlc.com
-  apiUrl: https://api.cluster-guid.sandbox.opentlc.com:6443
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
+
+# Pinned snapshot. Re-verify per target OCP version at generation time.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
+# GOTCHA: CheCluster CRD comes from this operator. Subscription is pinned to CatalogSource rhpds-redhat-operators (not the live redhat-operators index).
+devspaces:
+  operator:
+    name: devspaces
+    source: rhpds-redhat-operators
+    sourceNamespace: openshift-marketplace
+    channel: stable
 
 cheCluster:
   name: devspaces
@@ -14,6 +25,7 @@ cheCluster:
 
 eeImage: registry.redhat.io/ansible-automation-platform-26/ee-minimal-rhel9:latest
 
+# GOTCHA: openvsx.pat is already base64 (Secret `data`, not stringData). Setup Job inserts that same token into postgres; leave the demo postgres password as-is. PVC sizes: extensions 2Gi, postgres 10Gi.
 openvsx:
   enabled: true
   namespace: openvsx

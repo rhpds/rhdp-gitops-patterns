@@ -22,12 +22,13 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "104"
 rules:
+  # GOTCHA: oc rollout status watches deployments, replicasets, and pods.
   - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list", "patch", "update"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -48,7 +49,7 @@ subjects:
     name: {{ .Values.rhtpa.oidcWait.serviceAccountName }}
     namespace: {{ .Values.rhtpa.namespace }}
 ---
-# UBI Job installs oc/curl via dnf — needs anyuid (same pattern as other one-time Jobs).
+# GOTCHA: UBI Jobs that dnf-install need anyuid.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

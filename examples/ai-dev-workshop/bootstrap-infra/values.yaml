@@ -7,20 +7,18 @@ deployer:
 # Shared namespace for tenant cleanup jobs. Set to "" to disable.
 tenantLifecycle: ""
 
-# Only installs the gitea-operator cluster-wide. The actual Gitea instance is
-# deployed per tenant (see bootstrap-tenant/templates/gitea) since the number
-# of tenants is not known ahead of time to the infra chart.
-gitea:
-  catalogImage: quay.io/rhpds/gitea-catalog:latest
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
 
+# GOTCHA: pin a channel that exists on the rhpds-redhat-operators snapshot (OCP 4.22 has pipelines-1.21/1.22/1.23, not 1.17).
 pipelines:
-  channel: pipelines-1.17
-  source: redhat-operators
+  channel: pipelines-1.23
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
 
 rhoai:
   channel: stable-3.3
-  source: redhat-operators
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
 
 aiModels:

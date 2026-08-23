@@ -1,10 +1,4 @@
-# apiVersion v2 is the storage version even on stable-3.3 (v1 is served but
-# converted to v2 on write, silently dropping fields v2 doesn't have). kserve
-# in v2 has no `serving:` sub-object or `defaultDeploymentMode` — RawDeployment
-# is the only supported mode. modelmeshserving/codeflare/datasciencepipelines
-# don't exist in v2 either (datasciencepipelines was renamed to aipipelines).
-# Confirmed against the live CRD schema before assuming this matches older
-# RHOAI docs/examples.
+# GOTCHA: storage version is v2 — v1 fields (serving, defaultDeploymentMode, modelmeshserving, datasciencepipelines) are silently dropped.
 apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:

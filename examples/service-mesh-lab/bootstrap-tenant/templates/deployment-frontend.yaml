@@ -1,4 +1,4 @@
-# S2I httpd-24 image requires command override and content mount
+# GOTCHA: ubi9/httpd-24 is an S2I builder: requires command /usr/libexec/s2i/run and content mounted at /opt/app-root/src or it CrashLoopBackOffs.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

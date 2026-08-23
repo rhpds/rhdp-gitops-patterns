@@ -1,9 +1,6 @@
 {{- if .Values.keycloak.enabled }}
 ---
-# Realm import for RHTPA / Trustify — clients frontend (public) + cli (confidential).
-# Embeds Keycloak standard client scopes (basic/profile/email/roles/…) plus Trustify
-# chicken-* roles and read|create|delete:document scopes so SBOM upload/browse in the
-# TPA UI is authorized out of the box, with no manual Keycloak admin steps.
+# GOTCHA: realm import for RHTPA — frontend (public) + cli (confidential) with Trustify document scopes.
 apiVersion: v1
 kind: ConfigMap
 metadata:

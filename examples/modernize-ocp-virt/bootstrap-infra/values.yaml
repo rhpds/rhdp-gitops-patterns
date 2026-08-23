@@ -1,47 +1,30 @@
-# Default values for bootstrap.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-user:
-  count: 2
-  prefix: user
-
+# PURPOSE: COPY WHEN: Istio Gateway + multi-VM travel tenant + per-user ArgoCD. NOT FOR: GitLab/DevHub (ai-app-dev), simple VM (ocp-virt-lab).
+# CNV/HyperConverged: copy from examples/ocp-virt-lab. GitLab/DevHub: copy from examples/ai-app-dev.
+# Auto-injected by the deployer. Do not pass these manually.
 deployer:
-  domain: apps.cluster-guid.sandbox.opentlc.com
-  apiUrl: https://api.cluster-guid.sandbox.opentlc.com:6443
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
 
-devhub:
-  namespace: rhdh
-  channel: fast-1.8
-  source: redhat-operators
+# Shared namespace for tenant cleanup jobs. Set to "" to disable.
+tenantLifecycle: ""
+# tenantLifecycle:
+#   namespace: tenant-lifecycle
+
+# Pinned snapshot. Re-verify per target OCP version at generation time.
+catalog:
+  redhatOperatorsImage: quay.io/rhpds/olm_snapshot_redhat_catalog:v4.22_2026_08_17
+
+# CNV operator: copy from examples/ocp-virt-lab.
+cnv:
+  channel: stable
+  source: rhpds-redhat-operators
   sourceNamespace: openshift-marketplace
-  keycloakRealm: sso
-  oauth:
-    clientId: backstage
-    clientSecret: backstage-client-secret-demo
-  backendSecret: demo-backend-secret-key-change-me
+  namespace: openshift-cnv
 
-gitlab:
-  namespace: gitlab
-  image: quay.io/redhat-gpte/gitlab:17.4.1
-  postgresqlImage: quay.io/redhat-gpte/gitlab-postgresql:14
-  redisImage: redis:6.2.6
-  rootPassword: Dem0-G1tl4b!2026
-  repos:
-    - name: modernize-ocp-virt
-      sourceUrl: https://github.com/rhpds/modernize-ocp-virt-workspace.git
-      revision: main
-
-tenantLifecycleNamespace: tenant-lifecycle
-
-jobCliImage: registry.redhat.io/openshift4/ose-cli:latest
-jobAnsibleImage: quay.io/agnosticd/ee-multicloud:latest
-
-# This is the user-scoped git repo, where per seat user resources are stored.
-# Set to empty to NOT create tenants.
-tenant: ""
-# tenant:
-#   git:
-#     url: https://github.com/rhpds/modernize-ocp-virt-gitops.git
-#     revision: main
-#     path: bootstrap-tenant
+# OSSM 3 for GatewayClass istio (shared Istio Gateway).
+servicemesh:
+  channel: stable
+  source: rhpds-redhat-operators
+  sourceNamespace: openshift-marketplace
+  istioVersion: v1.30-latest

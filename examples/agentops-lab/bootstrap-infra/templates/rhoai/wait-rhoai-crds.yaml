@@ -1,0 +1,72 @@
+# GOTCHA: SkipDryRunOnMissingResource still applies; missing MLflow/KServe CRDs fail the wave
+# and ArgoCD then waits on sibling Progressing resources instead of retrying. Block until CRDs exist.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wait-rhoai-crds
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wait-rhoai-crds
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+rules:
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wait-rhoai-crds
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: wait-rhoai-crds
+subjects:
+  - kind: ServiceAccount
+    name: wait-rhoai-crds
+    namespace: openshift-gitops
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wait-rhoai-crds
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,BeforeHookCreation
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      serviceAccountName: wait-rhoai-crds
+      restartPolicy: OnFailure
+      containers:
+        - name: wait
+          image: registry.redhat.io/openshift4/ose-cli:v4.14
+          command:
+            - /bin/bash
+            - -c
+            - |
+              for crd in mlflows.mlflow.opendatahub.io inferenceservices.serving.kserve.io servingruntimes.serving.kserve.io; do
+                echo "Waiting for CRD $crd"
+                for i in $(seq 1 90); do
+                  if oc get crd "$crd" >/dev/null 2>&1; then
+                    echo "$crd is present"
+                    break
+                  fi
+                  if [ "$i" -eq 90 ]; then
+                    echo "ERROR: timed out waiting for $crd"
+                    exit 1
+                  fi
+                  sleep 10
+                done
+              done

@@ -1,9 +1,6 @@
 {{- if and .Values.gitea.enabled .Values.gitea.operator.enabled }}
 ---
-# Gitea Operator via OLM, from the RHPDS-maintained redhat-gpte-gitea catalog
-# (see templates/operators/catalogsource.yaml). Installs into openshift-operators
-# (AllNamespaces) using the default global OperatorGroup already present there —
-# same pattern as the rhtas / pipelines Subscriptions in this chart.
+# GOTCHA: AllNamespaces in openshift-operators, no OperatorGroup. Catalog is redhat-gpte-gitea (not redhat-operators).
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

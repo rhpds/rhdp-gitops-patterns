@@ -1,3 +1,4 @@
+# GOTCHA: ubi9/nginx-122 is an S2I builder: requires command /usr/libexec/s2i/run and content mounted at /opt/app-root/src or it CrashLoopBackOffs.
 {{- range .Values.namespaces }}
 apiVersion: apps/v1
 kind: Deployment

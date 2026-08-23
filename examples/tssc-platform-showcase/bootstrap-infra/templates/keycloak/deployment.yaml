@@ -24,8 +24,7 @@ spec:
         {{- include "keycloak.labels" . | nindent 8 }}
         app: {{ .Values.keycloak.name }}
       annotations:
-        # start-dev has no PVC — recreate on realm ConfigMap change so --import-realm
-        # picks up the Trustify chicken roles / document scopes.
+        # GOTCHA: start-dev has no PVC — checksum recreates the pod so --import-realm picks up realm changes.
         checksum/realm-import: {{ include (print $.Template.BasePath "/keycloak/realm-configmap.yaml") . | sha256sum }}
     spec:
 {{- if .Values.keycloak.anyuidScc }}
@@ -55,7 +54,7 @@ spec:
               value: "true"
             - name: KC_PROXY_HEADERS
               value: xforwarded
-            # Full URL required when using edge Route + proxy headers (Keycloak 26)
+            # GOTCHA: Keycloak 26 needs a full URL here with edge Route + proxy headers.
             - name: KC_HOSTNAME
               value: {{ printf "https://%s" $host | quote }}
             - name: KC_HOSTNAME_STRICT

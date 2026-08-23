@@ -9,9 +9,6 @@ metadata:
     app.kubernetes.io/component: openvsx-server
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-
-    app.kubernetes.io/instance: openvsx-server
-    app.kubernetes.io/component: openvsx-server
 spec:
   host: {{ template "bootstrap.openvsx.host" . }}
   to:

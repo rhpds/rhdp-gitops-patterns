@@ -1,9 +1,11 @@
----
+# GOTCHA: Gateway Route stays in shared istio-gateway; all other tenant resources stay in username-* namespaces.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: {{ .Values.username }}
   namespace: istio-gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   to:
     kind: Service
@@ -18,6 +20,8 @@ kind: Route
 metadata:
   name: {{ .Values.username }}-ingress
   namespace: istio-gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   to:
     kind: Service

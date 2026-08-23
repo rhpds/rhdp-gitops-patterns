@@ -1,8 +1,7 @@
 {{- if .Values.rhtas.enabled }}
 {{- $fulcioCN := include "rhtas.fulcioCommonName" . }}
 ---
-# Securesign CR — deploys Fulcio, Rekor, Trillian, CTlog, and TUF for keyless signing.
-# Reuse: Trusted Software Factory / RHADS tas-instance patterns.
+# Securesign CR — Fulcio, Rekor, Trillian, CTlog, TUF for keyless signing.
 apiVersion: {{ .Values.rhtas.apiVersion }}
 kind: Securesign
 metadata:

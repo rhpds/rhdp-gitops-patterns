@@ -4,7 +4,8 @@ metadata:
   name: developer-hub
   namespace: {{ .Values.devhub.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    # After GitLab init (wave 3) so gitlab-token exists before the operator mounts it.
+    argocd.argoproj.io/sync-wave: "4"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   application:

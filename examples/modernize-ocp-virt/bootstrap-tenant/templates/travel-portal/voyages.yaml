@@ -5,13 +5,16 @@ metadata:
   name: voyages
   namespace: {{ .Values.username }}-travel-portal
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    # GOTCHA: wave 2 so portal Deployments cannot deadlock wave-1 VMs.
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   selector:
     matchLabels:
       app: voyages
       version: v1
   replicas: 1
+  # GOTCHA: initContainer waits for travels-vm HTTP; default 600s deadline Degrades ArgoCD.
+  progressDeadlineSeconds: 7200
   template:
     metadata:
       annotations:
@@ -20,6 +23,24 @@ spec:
         app: voyages
         version: v1
     spec:
+      # GOTCHA: demo_travels_portal panics if travels-vm is not yet serving HTTP.
+      initContainers:
+        - name: wait-for-agency
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "waiting for travels-vm:8000"
+              until (echo >/dev/tcp/travels-vm.{{ .Values.username }}-travel-agency/8000) >/dev/null 2>&1; do
+                sleep 5
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
       containers:
         - name: voyages
           image: quay.io/kiali/demo_travels_portal:v1

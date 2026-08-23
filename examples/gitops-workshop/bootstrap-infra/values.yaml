@@ -1,3 +1,4 @@
+# PURPOSE: Gitea CreateUsers + sample-repo Job. Requires Gitea operator from examples/gitea-devspaces. Per-user ArgoCD is in this example's bootstrap-tenant.
 # Auto-injected by the deployer. Do not pass these manually.
 deployer:
   domain: apps.cluster.example.com

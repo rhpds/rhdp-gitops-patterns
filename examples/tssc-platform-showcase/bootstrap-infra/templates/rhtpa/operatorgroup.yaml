@@ -1,7 +1,7 @@
 {{- if and .Values.rhtpa.enabled .Values.rhtpa.operator.enabled .Values.rhtpa.operator.createOperatorGroup }}
 {{- $opNs := include "rhtpa.operatorNamespace" . }}
 ---
-# Namespace-scoped OperatorGroup for RHTPA (RHADS / TSF pattern).
+# Namespace-scoped OperatorGroup for RHTPA.
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:

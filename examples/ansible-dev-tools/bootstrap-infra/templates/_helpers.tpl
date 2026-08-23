@@ -1,5 +1,5 @@
 {{/*
-Return the host for the OpenVSX server
+GOTCHA: Route host is openvsx-server.<deployer.domain> unless openvsx.route.host is set.
 */}}
 {{- define "bootstrap.openvsx.host" -}}
 {{- .Values.openvsx.route.host | default (printf "openvsx-server.%s" .Values.deployer.domain) | default "open-vsx.org" }}

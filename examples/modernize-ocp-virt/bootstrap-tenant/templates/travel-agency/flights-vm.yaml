@@ -4,6 +4,9 @@ kind: VirtualMachine
 metadata:
   name: flights-vm
   namespace: {{ .Values.username }}-travel-agency
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1

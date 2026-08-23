@@ -1,5 +1,4 @@
-# RHOAI's own internal monitoring stack, independent of cluster UWM — an
-# alternate source for model-serving metrics if UWM has issues. Not default.
+# Alternate Prometheus (RHOAI monitoring stack), not default. Independent of cluster UWM.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:

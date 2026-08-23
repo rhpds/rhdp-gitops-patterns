@@ -1,5 +1,5 @@
 apiVersion: v2
 name: bootstrap-tenant
-description: Per-user tenant environment for AI Dev Workshop v2
+description: "COPY WHEN: RHOAI DataScienceCluster + InferenceService/ServingRuntime + per-user Gitea CR + tenant pipeline using the model. NOT FOR: Grafana/MLflow/notebooks (agentops-lab). Gitea operator (gitea-devspaces) and Pipelines operator (pipelines-workshop) are included as dependencies of those tenant CRs."
 type: application
 version: 0.1.0
